@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "607782951885",
+    "project_id": "vega-b3c34",
+    "storage_bucket": "vega-b3c34.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:607782951885:android:a7e83f8f87bc928dbe4284",
+        "android_client_info": {
+          "package_name": "com.example.vega"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7CsqHeKPOCl7sB-hNUFaA_7Oq4c_Oesk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
