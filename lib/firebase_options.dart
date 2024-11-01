@@ -57,19 +57,20 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyD7CsqHeKPOCl7sB-hNUFaA_7Oq4c_Oesk',
-    appId: '1:607782951885:android:a7e83f8f87bc928dbe4284',
-    messagingSenderId: '607782951885',
-    projectId: 'vega-b3c34',
-    storageBucket: 'vega-b3c34.appspot.com',
+    apiKey: 'AIzaSyDUKLeDdyW8z_Ag2opGBvbTQF4OsFJt0Wo',
+    appId: '1:155032276852:android:969418b03a537e6a89e621',
+    messagingSenderId: '155032276852',
+    projectId: 'vega-4c634',
+    storageBucket: 'vega-4c634.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBn3HvcBBxk_crM-bPuGYRPIs6vkrRl59U',
-    appId: '1:607782951885:ios:6021293809fa00febe4284',
-    messagingSenderId: '607782951885',
-    projectId: 'vega-b3c34',
-    storageBucket: 'vega-b3c34.appspot.com',
+    apiKey: 'AIzaSyB20Jv7WGBVv1HlEWALsP7ABYSe3NMuDZI',
+    appId: '1:155032276852:ios:c084b1db10edd5b289e621',
+    messagingSenderId: '155032276852',
+    projectId: 'vega-4c634',
+    storageBucket: 'vega-4c634.firebasestorage.app',
     iosBundleId: 'com.example.vega',
   );
+
 }

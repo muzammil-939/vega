@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "607782951885",
-    "project_id": "vega-b3c34",
-    "storage_bucket": "vega-b3c34.appspot.com"
+    "project_number": "155032276852",
+    "project_id": "vega-4c634",
+    "storage_bucket": "vega-4c634.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:607782951885:android:a7e83f8f87bc928dbe4284",
+        "mobilesdk_app_id": "1:155032276852:android:969418b03a537e6a89e621",
         "android_client_info": {
           "package_name": "com.example.vega"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyD7CsqHeKPOCl7sB-hNUFaA_7Oq4c_Oesk"
+          "current_key": "AIzaSyDUKLeDdyW8z_Ag2opGBvbTQF4OsFJt0Wo"
         }
       ],
       "services": {

@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vega/screens/home.dart';
-
+import '../providers/firebase_auth.dart';
 import '../sign_in/fb_sign_in.dart';
 
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+class LoginScreen extends ConsumerWidget {
+  final phoneController = TextEditingController();
+
+  LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final phoneAuthState = ref.watch(phoneAuthProvider);
+    final phoneAuthNotifier = ref.read(phoneAuthProvider.notifier);
     // Getting the screen size using MediaQuery
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -36,11 +41,7 @@ class LoginScreen extends StatelessWidget {
             ),
             Positioned(
               bottom: 0,
-              child: Container(
-                  // decoration: BoxDecoration(
-                  //   gradient: LinearGradient(colors: )
-                  // ),
-                  ),
+              child: Container(),
             ),
             Positioned(
               left: screenWidth * 0.25,
@@ -58,7 +59,7 @@ class LoginScreen extends StatelessWidget {
               child: Text(
                 "Login",
                 style: TextStyle(
-                  fontSize: screenWidth * 0.06, // Responsive font size
+                  fontSize: screenWidth * 0.06,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -79,6 +80,7 @@ class LoginScreen extends StatelessWidget {
                   ),
                   SizedBox(height: screenHeight * 0.02),
                   TextField(
+                    controller: phoneController,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(32),
@@ -123,6 +125,9 @@ class LoginScreen extends StatelessWidget {
                         ),
                         child: ElevatedButton(
                           onPressed: () {
+                            phoneAuthNotifier
+                                .verifyPhoneNumber(phoneController.text);
+
                             showModalBottomSheet(
                               context: context,
                               backgroundColor: Colors.transparent,
@@ -343,12 +348,11 @@ class LoginScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(107),
                             ),
                             child: Padding(
-                              padding: EdgeInsets.all(screenWidth *
-                                  0.02), // Add some padding for better alignment
+                              padding: EdgeInsets.all(screenWidth * 0.02),
                               child: SvgPicture.asset(
                                 'assets/images/google_logo.svg',
-                                width: screenWidth * 0.08, // Adjust logo size
-                                height: screenHeight * 0.04, // Adjust logo size
+                                width: screenWidth * 0.08,
+                                height: screenHeight * 0.04,
                               ),
                             ),
                           ),
@@ -367,12 +371,11 @@ class LoginScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(107),
                             ),
                             child: Padding(
-                              padding: EdgeInsets.all(screenWidth *
-                                  0.02), // Add some padding for better alignment
+                              padding: EdgeInsets.all(screenWidth * 0.02),
                               child: SvgPicture.asset(
                                 'assets/images/facebook_logo.svg',
-                                width: screenWidth * 0.08, // Adjust logo size
-                                height: screenHeight * 0.04, // Adjust logo size
+                                width: screenWidth * 0.08,
+                                height: screenHeight * 0.04,
                               ),
                             ),
                           ),
@@ -408,7 +411,7 @@ class LoginScreen extends StatelessWidget {
   }
 }
 
-//otp dialog circles
+// OTP dialog circles
 Widget _buildCircularContainer() {
   return Container(
     width: 40,
