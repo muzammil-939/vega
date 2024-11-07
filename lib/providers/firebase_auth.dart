@@ -10,7 +10,7 @@ final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
 
 final phoneAuthProvider =
     StateNotifierProvider<PhoneAuthNotifier, PhoneAuthState>((ref) {
-  return PhoneAuthNotifier(ref);
+  return PhoneAuthNotifier();
 });
 
 final authStateProvider = StreamProvider<User?>((ref) {
