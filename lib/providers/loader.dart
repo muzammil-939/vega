@@ -3,3 +3,4 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final loadingProvider = StateProvider<bool>((ref) => false);
 final secondLoadingProvider = StateProvider<bool>((ref) => false);
+final codeSent = StateProvider<bool>((ref) => false);

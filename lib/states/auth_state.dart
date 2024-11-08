@@ -37,6 +37,7 @@ class PhoneAuthNotifier extends StateNotifier<PhoneAuthState> {
       String phoneNumber, WidgetRef ref, Function verifyotp) async {
     final auth = ref.read(firebaseAuthProvider);
     var loader = ref.read(loadingProvider.notifier);
+    var codesent = ref.read(codeSent.notifier);
     loader.state = true;
     await auth.verifyPhoneNumber(
       phoneNumber: phoneNumber,
@@ -52,7 +53,7 @@ class PhoneAuthNotifier extends StateNotifier<PhoneAuthState> {
       codeSent: (String verificationId, int? resendToken) {
         loader.state = false;
         state = PhoneAuthState(verificationId: verificationId);
-        verifyotp();
+        codesent.state = true;
       },
       codeAutoRetrievalTimeout: (String verificationId) {
         loader.state = false;

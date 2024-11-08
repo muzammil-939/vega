@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:vega/screens/room.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -8,11 +9,13 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     // Retrieve the current user from FirebaseAuth
     User? user = FirebaseAuth.instance.currentUser;
-
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
       body: Stack(
         children: [
           Container(
+            height: screenHeight * 0.46,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -58,34 +61,170 @@ class HomePage extends StatelessWidget {
               ),
             ),
           ),
-          // Add user info at the bottom of the screen
-          Positioned(
-            bottom: 40, // Position the user info at the bottom
-            left: 20,
-            right: 20,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Display user's display name
-                Text(
-                  user?.displayName ?? 'No Name Available',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              height: screenHeight * 0.54,
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(30),
+                    topLeft: Radius.circular(30)),
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xffffffff),
+                    Color(0xffBDE2E4),
+                  ],
+                  stops: [
+                    0.8,
+                    1.0,
+                  ],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
+              ),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 50, left: 25),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: screenWidth * 0.45,
+                        height: screenHeight * 0.24,
+                        decoration: BoxDecoration(
+                            color: Color(0x33d5c994),
+                            borderRadius: BorderRadius.circular(25)),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(top: 10, bottom: 10),
+                              child: Image.asset(
+                                'assets/images/Rectangle_2.png',
+                                width: screenWidth * 0.42,
+                                height: screenWidth * 0.3,
+                              ),
+                            ),
+                            SizedBox(
+                              width: screenWidth * 0.33,
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("Default Room"),
+                                  Text(
+                                    "#1234",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                    ),
+                                  )
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              height: 5,
+                            ),
+                            SizedBox(
+                              width: screenWidth * 0.35,
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Image(
+                                        image: AssetImage(
+                                            'assets/images/Rectangle_3.png'),
+                                      ),
+                                      Icon(Icons.person),
+                                      Text("1/4"),
+                                    ],
+                                  ),
+                                  Container(
+                                    height: 30,
+                                    width: 60,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color.fromRGBO(37, 152, 158, 100),
+                                          Color.fromRGBO(201, 233, 236, 50),
+                                          Color.fromRGBO(122, 194, 199, 100),
+                                          Color.fromRGBO(37, 152, 158, 100),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(107),
+                                    ),
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const Room()),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.transparent,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(107),
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                      ),
+                                      child: const Center(
+                                        child: Text(
+                                          'Join',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Color(0xff025253),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                // Display user's email
-                Text(
-                  user?.email ?? 'No Email Available',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.black54,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
+          // Add user info at the bottom of the screen
+          // Positioned(
+          //   bottom: 40, // Position the user info at the bottom
+          //   left: 20,
+          //   right: 20,
+          //   child: Column(
+          //     crossAxisAlignment: CrossAxisAlignment.center,
+          //     children: [
+          //       // Display user's display name
+          //       Text(
+          //         user?.displayName ?? 'No Name Available',
+          //         style: const TextStyle(
+          //           fontSize: 18,
+          //           fontWeight: FontWeight.bold,
+          //         ),
+          //       ),
+          //       const SizedBox(height: 8),
+          //       // Display user's email
+          //       Text(
+          //         user?.email ?? 'No Email Available',
+          //         style: const TextStyle(
+          //           fontSize: 16,
+          //           color: Colors.black54,
+          //         ),
+          //       ),
+          //     ],
+          //   ),
+          // ),
         ],
       ),
     );
