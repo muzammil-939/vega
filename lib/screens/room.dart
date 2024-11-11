@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 class Room extends StatefulWidget {
@@ -11,19 +11,38 @@ class Room extends StatefulWidget {
 
 class _RoomState extends State<Room> {
   final TextEditingController _controller = TextEditingController();
-  final DatabaseReference _messagesRef =
-      FirebaseDatabase.instance.ref('chat/messages');
-  final List<Map<String, String>> _messages = []; // For local display purpose
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final List<Map<String, String>> _messages = [];
+  DatabaseReference? _sessionRef;
+  String? _sessionId;
 
   @override
   void initState() {
     super.initState();
+    _initializeChatSession();
+  }
+
+  /// Function to initialize the chat session
+  void _initializeChatSession() {
+    final senderId = _auth.currentUser?.uid;
+    if (senderId == null) return;
+
+    // Set up a global chat session path (e.g., for a public room)
+    _sessionId = 'global_chat_room';
+
+    // Reference to the session in Firebase Realtime Database
+    _sessionRef =
+        FirebaseDatabase.instance.ref('chat/sessions/$_sessionId/messages');
+
+    // Listen to this specific chat session messages
     _listenToMessages();
   }
 
-  // Listen to Firebase Realtime Database for new messages
+  /// Listening to the chat messages for the current session
   void _listenToMessages() {
-    _messagesRef.onChildAdded.listen((event) {
+    if (_sessionRef == null) return;
+
+    _sessionRef!.onChildAdded.listen((event) {
       final messageData = event.snapshot.value as Map<dynamic, dynamic>;
       setState(() {
         _messages.add({
@@ -34,61 +53,27 @@ class _RoomState extends State<Room> {
     });
   }
 
-  // Method to send the message and get bot response
+  /// Sending a chat message
   void _sendMessage() async {
-    if (_controller.text.isNotEmpty) {
-      final userMessage = _controller.text;
+    if (_controller.text.isEmpty || _sessionId == null) return;
 
-      // Debug: Print the message to verify
-      print("User message: $userMessage");
+    final userMessage = _controller.text;
+    final senderId = _auth.currentUser?.uid;
+    final userName = _auth.currentUser?.displayName ?? 'User';
 
-      // Store user's message in Firebase Realtime Database
-      await _storeMessageInDatabase(userMessage, 'user');
+    if (senderId == null) return;
 
-      // Show loading indicator while waiting for the response
-      setState(() {
-        _messages.add({'sender': 'bot', 'text': 'Typing...'});
-      });
-
-      // Get bot response
-      final response = await _getBotResponse(userMessage);
-
-      // Remove 'Typing...' and add actual bot response
-      setState(() {
-        _messages.removeLast();
-        _messages.add({'sender': 'bot', 'text': response});
-      });
-
-      // Store bot's response in Firebase Realtime Database
-      await _storeMessageInDatabase(response, 'bot');
-
-      // Clear the input field
-      _controller.clear();
-    }
-  }
-
-  // Store message in Firebase Realtime Database
-  Future<void> _storeMessageInDatabase(String message, String sender) async {
+    // Store user's message in Firebase Realtime Database
     final messageData = {
-      'message': message,
-      'sender': sender,
+      'message': userMessage,
+      'sender': userName,
+      'senderId': senderId,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     };
-    await _messagesRef.push().set(messageData);
-  }
+    await _sessionRef?.push().set(messageData);
 
-  // Method to call Firebase Function for bot response with error handling
-  Future<String> _getBotResponse(String message) async {
-    try {
-      final HttpsCallable callable =
-          FirebaseFunctions.instance.httpsCallable('chatBotResponse');
-      print("Sending message to Firebase: $message");
-      final response = await callable.call({'message': message});
-      return response.data['text'] ?? "Error: No response from bot.";
-    } catch (e) {
-      print("Error: $e");
-      return "Error: Could not get response from the bot.";
-    }
+    // Clear input field
+    _controller.clear();
   }
 
   @override
@@ -101,7 +86,7 @@ class _RoomState extends State<Room> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         title: const Text(
-          'Default Room',
+          'Global Chat Room',
           style: TextStyle(
             color: Colors.white,
           ),
@@ -180,7 +165,7 @@ class _RoomState extends State<Room> {
                 itemCount: _messages.length,
                 itemBuilder: (context, index) {
                   final message = _messages[index];
-                  final isUser = message['sender'] == 'user';
+                  final isUser = message['senderId'] == _auth.currentUser?.uid;
                   return Align(
                     alignment:
                         isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -192,7 +177,7 @@ class _RoomState extends State<Room> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        message['text']!,
+                        '${message['sender']}: ${message['text']}',
                         style: const TextStyle(color: Colors.white),
                       ),
                     ),
