@@ -12,6 +12,7 @@ class HomePage extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           Container(
@@ -41,22 +42,22 @@ class HomePage extends StatelessWidget {
             ),
           ),
           const SizedBox(
-            height: 40,
+            height: 10,
           ),
           Positioned(
-            top: 120,
+            top: 100,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
                   const SizedBox(width: 25),
-                  _mostPopularGames(),
+                  _mostPopularGames(context),
                   const SizedBox(width: 25),
-                  _mostPopularGames(),
+                  _mostPopularGames(context),
                   const SizedBox(width: 25),
-                  _mostPopularGames(),
+                  _mostPopularGames(context),
                   const SizedBox(width: 25),
-                  _mostPopularGames(),
+                  _mostPopularGames(context),
                 ],
               ),
             ),
@@ -64,7 +65,7 @@ class HomePage extends StatelessWidget {
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
-              height: screenHeight * 0.54,
+              height: screenHeight * 0.52,
               decoration: const BoxDecoration(
                 borderRadius: BorderRadius.only(
                     topRight: Radius.circular(30),
@@ -141,8 +142,8 @@ class HomePage extends StatelessWidget {
                                     ],
                                   ),
                                   Container(
-                                    height: 30,
-                                    width: 60,
+                                    height: screenHeight * 0.025,
+                                    width: screenWidth * 0.125,
                                     decoration: BoxDecoration(
                                       gradient: const LinearGradient(
                                         colors: [
@@ -231,15 +232,17 @@ class HomePage extends StatelessWidget {
   }
 }
 
-Widget _mostPopularGames() {
+Widget _mostPopularGames(context) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final screenHeight = MediaQuery.of(context).size.height;
   return SizedBox(
     height: 300,
     child: Stack(
       children: [
         Center(
           child: Container(
-            height: 200,
-            width: 160,
+            height: screenHeight * 0.23,
+            width: screenWidth * 0.4,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -330,8 +333,8 @@ Widget _mostPopularGames() {
           bottom: 40,
           left: 30,
           child: Container(
-            height: 30,
-            width: 102,
+            height: screenHeight * 0.035,
+            width: screenWidth * 0.23,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [
