@@ -1,9 +1,43 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:vega/screens/room.dart';
+import 'package:vega/screens/room_creation.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _selectedIndex = 0;
+
+  // Handle bottom navigation taps
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    switch (index) {
+      case 0:
+        // Home (Already on this page)
+        break;
+      case 1:
+        // Navigate to battle (or any other desired screen)
+        break;
+      case 2:
+        // Profile page or functionality
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RoomCreation()),
+        );
+        break;
+      case 3:
+        // Settings page or functionality
+        // Add your desired action or navigation
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,10 +96,11 @@ class HomePage extends StatelessWidget {
               ),
             ),
           ),
+
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
-              height: screenHeight * 0.52,
+              height: screenHeight * 0.5,
               decoration: const BoxDecoration(
                 borderRadius: BorderRadius.only(
                     topRight: Radius.circular(30),
@@ -226,6 +261,32 @@ class HomePage extends StatelessWidget {
           //     ],
           //   ),
           // ),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: const Color(0xff025253), // Selected icon color
+        unselectedItemColor: Colors.grey.shade400, // Unselected icon color
+        backgroundColor: const Color(0xffBDE2E4), // Background color
+        type: BottomNavigationBarType.fixed, // Fixed type for more than 3 items
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add), // Use cross-swords icon if available
+            label: 'Battle',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
         ],
       ),
     );
