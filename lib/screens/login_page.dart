@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vega/providers/loader.dart';
 import 'package:vega/screens/home.dart';
 import '../providers/firebase_auth.dart';
-import '../sign_in/fb_sign_in.dart';
+import '../states/fb_sign_in.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);

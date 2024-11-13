@@ -16,6 +16,7 @@ class _RoomCreationState extends State<RoomCreation> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           'CREATE A GAME ROOM',
@@ -25,12 +26,7 @@ class _RoomCreationState extends State<RoomCreation> {
           ),
         ),
         backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.black,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+        elevation: 1,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

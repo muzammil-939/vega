@@ -171,13 +171,29 @@ class _RoomState extends State<Room> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: List.generate(
-                          4, (index) => Image.asset('assets/images/Mic.png')),
+                          4,
+                          (index) => Container(
+                                width: screenWidth * 0.13,
+                                height: screenWidth * 0.13,
+                                decoration: BoxDecoration(
+                                    color: Colors.grey,
+                                    borderRadius: BorderRadius.circular(50)),
+                                child: Icon(Icons.mic),
+                              )),
                     ),
                     SizedBox(height: screenHeight * 0.05),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: List.generate(
-                          4, (index) => Image.asset('assets/images/Mic.png')),
+                          4,
+                          (index) => Container(
+                                width: screenWidth * 0.13,
+                                height: screenWidth * 0.13,
+                                decoration: BoxDecoration(
+                                    color: Colors.grey,
+                                    borderRadius: BorderRadius.circular(50)),
+                                child: Icon(Icons.mic),
+                              )),
                     ),
                   ],
                 ),

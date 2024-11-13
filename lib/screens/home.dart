@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:vega/screens/profile.dart';
 import 'package:vega/screens/room.dart';
 import 'package:vega/screens/room_creation.dart';
 
@@ -24,13 +25,18 @@ class _HomePageState extends State<HomePage> {
         break;
       case 1:
         // Navigate to battle (or any other desired screen)
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RoomCreation()),
+        );
         break;
       case 2:
         // Profile page or functionality
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const RoomCreation()),
+          MaterialPageRoute(builder: (context) => Profile()),
         );
+
         break;
       case 3:
         // Settings page or functionality
@@ -265,11 +271,11 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
+        type: BottomNavigationBarType.fixed,
         onTap: _onItemTapped,
         selectedItemColor: const Color(0xff025253), // Selected icon color
         unselectedItemColor: Colors.grey.shade400, // Unselected icon color
         backgroundColor: const Color(0xffBDE2E4), // Background color
-        type: BottomNavigationBarType.fixed, // Fixed type for more than 3 items
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
