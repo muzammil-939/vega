@@ -132,36 +132,6 @@ class _ProfileState extends State<Profile> {
                   ),
                 ),
               ),
-            // Stack(
-            //   alignment: Alignment.center,
-            //   children: [
-            //     // Frame as a background
-            //     Container(
-            //       width: 130,
-            //       height: 130,
-            //       decoration: BoxDecoration(
-            //         border: Border.all(
-            //           color: Colors.green,
-            //           width: 5,
-            //         ),
-            //         shape: BoxShape.circle,
-            //       ),
-            //     ),
-            //     // Image inside the frame
-            //     CircleAvatar(
-            //       radius: 60,
-            //       backgroundImage:
-            //           _imageFile != null ? FileImage(_imageFile!) : null,
-            //       child: _imageFile == null
-            //           ? const Icon(Icons.add_a_photo, size: 30)
-            //           : null,
-            //     ),
-            //     // CircleAvatar(
-            //     //     radius: 60,
-            //     //     backgroundImage:
-            //     //         AssetImage('assets/images/man-sample.png')),
-            //   ],
-            // )
           ],
         ),
       ),
