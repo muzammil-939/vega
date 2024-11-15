@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'custom_room.dart';
 
 class RoomCreation extends StatefulWidget {
-  const RoomCreation({super.key});
+  final Function(String, File?) onRoomCreated; // Callback function
+
+  const RoomCreation({super.key, required this.onRoomCreated});
 
   @override
   State<RoomCreation> createState() => _RoomCreationState();
@@ -10,11 +15,61 @@ class RoomCreation extends StatefulWidget {
 class _RoomCreationState extends State<RoomCreation> {
   bool isPasswordVisible = false;
   String roomType = 'Open Chat'; // Default selected room type
+  final ImagePicker _picker = ImagePicker();
+  XFile? _selectedImage;
+  final TextEditingController roomNameController = TextEditingController();
+
+  // Method to show bottom sheet for image selection
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
+      ),
+      builder: (BuildContext context) {
+        return Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Gallery'),
+              onTap: () async {
+                Navigator.pop(context); // Close the bottom sheet
+                final pickedImage =
+                    await _picker.pickImage(source: ImageSource.gallery);
+                if (pickedImage != null) {
+                  setState(() {
+                    _selectedImage = pickedImage;
+                  });
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Camera'),
+              onTap: () async {
+                Navigator.pop(context); // Close the bottom sheet
+                final pickedImage =
+                    await _picker.pickImage(source: ImageSource.camera);
+                if (pickedImage != null) {
+                  setState(() {
+                    _selectedImage = pickedImage;
+                  });
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -31,149 +86,104 @@ class _RoomCreationState extends State<RoomCreation> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 16),
-            const Text(
-              'ROOM NAME',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.teal,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'Enter room name',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30.0),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20.0,
-                  vertical: 20.0, // Increased height
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'ICON/BANNER',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.teal,
-              ),
-            ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () {
-                // Handle image upload here
-                print('Upload from mobile tapped');
-              },
-              child: const Text(
-                'Upload from mobile',
-                style: TextStyle(
-                  decoration: TextDecoration.underline,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Or',
-              style: TextStyle(
-                fontSize: 16,
-              ),
-            ),
-            TextField(
-              decoration: InputDecoration(
-                hintText: '',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30.0),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20.0,
-                  vertical: 20.0, // Increased height
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'PASSWORD',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.teal,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              obscureText: !isPasswordVisible,
-              decoration: InputDecoration(
-                hintText: 'Enter password',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30.0),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20.0,
-                  vertical: 20.0, // Increased height
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      isPasswordVisible = !isPasswordVisible;
-                    });
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'ROOM TYPE',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.teal,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ListTile(
-                    title: const Text('Open Chat'),
-                    leading: Radio<String>(
-                      value: 'Open Chat',
-                      groupValue: roomType,
-                      onChanged: (value) {
-                        setState(() {
-                          roomType = value!;
-                        });
-                      },
-                      activeColor: Colors.teal,
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+                    const Text(
+                      'ROOM NAME',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal,
+                      ),
                     ),
-                  ),
-                ),
-                Expanded(
-                  child: ListTile(
-                    title: const Text('Game Room'),
-                    leading: Radio<String>(
-                      value: 'Game Room',
-                      groupValue: roomType,
-                      onChanged: (value) {
-                        setState(() {
-                          roomType = value!;
-                        });
-                      },
-                      activeColor: Colors.teal,
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: roomNameController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter room name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20.0,
+                          vertical: 20.0,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'ICON/BANNER',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: _showImageSourceSheet,
+                      child: const Text(
+                        'Upload from mobile',
+                        style: TextStyle(
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_selectedImage != null)
+                      Center(
+                        child: Image.file(
+                          File(_selectedImage!.path),
+                          height: 150,
+                          width: 150,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'PASSWORD',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      obscureText: !isPasswordVisible,
+                      decoration: InputDecoration(
+                        hintText: 'Enter password',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20.0,
+                          vertical: 20.0,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              isPasswordVisible = !isPasswordVisible;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-            Spacer(),
+            const SizedBox(height: 16),
             Align(
               alignment: Alignment.bottomCenter,
               child: Container(
@@ -194,8 +204,24 @@ class _RoomCreationState extends State<RoomCreation> {
                 ),
                 child: ElevatedButton(
                   onPressed: () {
-                    // Perform some action
+                    widget.onRoomCreated(
+                        roomNameController.text,
+                        _selectedImage != null
+                            ? File(_selectedImage!.path)
+                            : null);
+                    Navigator.pop(context); // Go back to HomePage
                   },
+                  // onPressed: () {
+                  //   Navigator.push(
+                  //     context,
+                  //     MaterialPageRoute(
+                  //       builder: (context) => CustomRoom(
+                  //         roomName: roomNameController.text,
+                  //         roomImage: _selectedImage,
+                  //       ),
+                  //     ),
+                  //   );
+                  // },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     elevation: 0,

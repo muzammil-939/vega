@@ -159,6 +159,10 @@ class _RoomState extends State<Room> {
             color: Colors.white,
           ),
         ),
+        leading: Container(
+          margin: EdgeInsets.symmetric(vertical: 6),
+          child: CircleAvatar(child: Image.asset('')),
+        ),
       ),
       resizeToAvoidBottomInset: true,
       // This helps to resize when the keyboard appears

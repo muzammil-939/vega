@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:vega/screens/profile.dart';
 import 'package:vega/screens/room.dart';
 import 'package:vega/screens/room_creation.dart';
+
+import 'custom_room.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,6 +18,12 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  List<Map<String, dynamic>> rooms = [
+    {
+      'name': 'Default Room',
+      'image': 'assets/images/Rectangle_2.png',
+    }
+  ];
 
   // Handle bottom navigation taps
   void _onItemTapped(int index) {
@@ -24,10 +35,17 @@ class _HomePageState extends State<HomePage> {
         // Home (Already on this page)
         break;
       case 1:
-        // Navigate to battle (or any other desired screen)
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const RoomCreation()),
+          MaterialPageRoute(
+            builder: (context) => RoomCreation(
+              onRoomCreated: (String name, File? image) {
+                setState(() {
+                  rooms.add({'name': name, 'image': image});
+                });
+              },
+            ),
+          ),
         );
         break;
       case 2:
@@ -55,6 +73,7 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
+          // Top gradient container with an image
           Container(
             height: screenHeight * 0.46,
             decoration: const BoxDecoration(
@@ -63,10 +82,7 @@ class _HomePageState extends State<HomePage> {
                   Color(0xffffffff),
                   Color(0xffBDE2E4),
                 ],
-                stops: [
-                  0.8,
-                  1.0,
-                ],
+                stops: [0.8, 1.0],
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
               ),
@@ -81,192 +97,79 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          const SizedBox(
-            height: 10,
-          ),
+
+          // Horizontal scrolling list of popular games
           Positioned(
             top: 100,
+            left: 0,
+            right: 0,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 25),
               child: Row(
-                children: [
-                  const SizedBox(width: 25),
-                  _mostPopularGames(context),
-                  const SizedBox(width: 25),
-                  _mostPopularGames(context),
-                  const SizedBox(width: 25),
-                  _mostPopularGames(context),
-                  const SizedBox(width: 25),
-                  _mostPopularGames(context),
-                ],
+                children: List.generate(
+                  4,
+                  (index) => Padding(
+                    padding: const EdgeInsets.only(right: 25),
+                    child: _mostPopularGames(context),
+                  ),
+                ),
               ),
             ),
           ),
 
+          // Bottom section with horizontal ListView of rooms
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
               height: screenHeight * 0.5,
               decoration: const BoxDecoration(
                 borderRadius: BorderRadius.only(
-                    topRight: Radius.circular(30),
-                    topLeft: Radius.circular(30)),
+                  topRight: Radius.circular(30),
+                  topLeft: Radius.circular(30),
+                ),
                 gradient: LinearGradient(
                   colors: [
                     Color(0xffffffff),
                     Color(0xffBDE2E4),
                   ],
-                  stops: [
-                    0.8,
-                    1.0,
-                  ],
+                  stops: [0.8, 1.0],
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                 ),
               ),
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 50, left: 25),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: screenWidth * 0.45,
-                        height: screenHeight * 0.24,
-                        decoration: BoxDecoration(
-                            color: Color(0x33d5c994),
-                            borderRadius: BorderRadius.circular(25)),
-                        child: Column(
-                          children: [
-                            Padding(
-                              padding:
-                                  const EdgeInsets.only(top: 10, bottom: 10),
-                              child: Image.asset(
-                                'assets/images/Rectangle_2.png',
-                                width: screenWidth * 0.42,
-                                height: screenWidth * 0.3,
-                              ),
-                            ),
-                            SizedBox(
-                              width: screenWidth * 0.33,
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text("Default Room"),
-                                  Text(
-                                    "#1234",
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                    ),
-                                  )
-                                ],
-                              ),
-                            ),
-                            SizedBox(
-                              height: 5,
-                            ),
-                            SizedBox(
-                              width: screenWidth * 0.35,
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Image(
-                                        image: AssetImage(
-                                            'assets/images/Rectangle_3.png'),
-                                      ),
-                                      Icon(Icons.person),
-                                      Text("1/4"),
-                                    ],
-                                  ),
-                                  Container(
-                                    height: screenHeight * 0.025,
-                                    width: screenWidth * 0.125,
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          Color.fromRGBO(37, 152, 158, 100),
-                                          Color.fromRGBO(201, 233, 236, 50),
-                                          Color.fromRGBO(122, 194, 199, 100),
-                                          Color.fromRGBO(37, 152, 158, 100),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(107),
-                                    ),
-                                    child: ElevatedButton(
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const Room()),
-                                        );
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.transparent,
-                                        elevation: 0,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(107),
-                                        ),
-                                        padding: EdgeInsets.zero,
-                                      ),
-                                      child: const Center(
-                                        child: Text(
-                                          'Join',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Color(0xff025253),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    // Horizontal ListView of rooms with height restricted
+                    SizedBox(
+                      height: screenHeight * 0.28,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: rooms.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: 20),
+                        itemBuilder: (context, index) {
+                          final room = rooms[index];
+                          return _buildRoomCard(
+                            context,
+                            room['name'],
+                            room['image'],
+                            screenWidth,
+                            screenHeight,
+                            index, // Pass index here
+                          );
+                        },
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-          // Add user info at the bottom of the screen
-          // Positioned(
-          //   bottom: 40, // Position the user info at the bottom
-          //   left: 20,
-          //   right: 20,
-          //   child: Column(
-          //     crossAxisAlignment: CrossAxisAlignment.center,
-          //     children: [
-          //       // Display user's display name
-          //       Text(
-          //         user?.displayName ?? 'No Name Available',
-          //         style: const TextStyle(
-          //           fontSize: 18,
-          //           fontWeight: FontWeight.bold,
-          //         ),
-          //       ),
-          //       const SizedBox(height: 8),
-          //       // Display user's email
-          //       Text(
-          //         user?.email ?? 'No Email Available',
-          //         style: const TextStyle(
-          //           fontSize: 16,
-          //           color: Colors.black54,
-          //         ),
-          //       ),
-          //     ],
-          //   ),
-          // ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -437,6 +340,106 @@ Widget _mostPopularGames(context) {
                 ),
               ),
             ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildRoomCard(BuildContext context, String name, dynamic image,
+    double screenWidth, double screenHeight, int index) {
+  bool isRoomFull =
+      false; // Replace this with your actual logic to determine if the room is full
+
+  return Container(
+    width: screenWidth * 0.45,
+    height: screenHeight * 0.24,
+    decoration: BoxDecoration(
+      color: const Color(0x33d5c994),
+      borderRadius: BorderRadius.circular(25),
+    ),
+    child: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 10, bottom: 10),
+          child: image is String
+              ? Image.asset(
+                  image,
+                  width: screenWidth * 0.42,
+                  height: screenWidth * 0.3,
+                )
+              : Container(
+                  height: screenHeight * 0.123,
+                  width: screenWidth * 0.35,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Image.file(
+                    image as File,
+                    width: screenWidth * 0.42,
+                    height: screenWidth * 0.3,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+        ),
+        SizedBox(
+          width: screenWidth * 0.33,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(name),
+              const Text(
+                "#1234",
+                style: TextStyle(
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 5),
+        SizedBox(
+          width: screenWidth * 0.35,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.person),
+                  Text("1/4"), // Update participant count dynamically
+                ],
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (!isRoomFull) {
+                    // Navigate to CustomRoom if the room is not full
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CustomRoom(
+                          roomName: name,
+                          roomImage: image is File
+                              ? XFile(image.path)
+                              : null, // Pass XFile if it's a File
+                        ),
+                      ),
+                    );
+                  } else {
+                    // Show an error message if the room is full
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Room $name is currently full.',
+                        ),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                child: Text(!isRoomFull ? "Join" : "Full"),
+              ),
+            ],
           ),
         ),
       ],
