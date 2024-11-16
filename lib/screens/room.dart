@@ -161,7 +161,7 @@ class _RoomState extends State<Room> {
         ),
         leading: Container(
           margin: EdgeInsets.symmetric(vertical: 6),
-          child: CircleAvatar(child: Image.asset('')),
+          child: CircleAvatar(child: Icon(Icons.image)),
         ),
       ),
       resizeToAvoidBottomInset: true,

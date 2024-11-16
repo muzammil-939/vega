@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vega/screens/profile.dart';
@@ -18,28 +19,58 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-  List<Map<String, dynamic>> rooms = [
-    {
-      'name': 'Default Room',
-      'image': 'assets/images/Rectangle_2.png',
-    }
-  ];
+  List<Map<String, dynamic>> rooms = [];
+  final _databaseRef = FirebaseDatabase.instance.ref();
 
-  // Handle bottom navigation taps
+  @override
+  void initState() {
+    super.initState();
+    _loadRooms(); // Load rooms from Firebase
+  }
+
+  Future<void> _loadRooms() async {
+    try {
+      final roomsSnapshot = await _databaseRef.child('rooms').get();
+      if (roomsSnapshot.exists) {
+        final roomsData = Map<String, dynamic>.from(roomsSnapshot.value as Map);
+        setState(() {
+          rooms = roomsData.entries.map((entry) {
+            return {
+              'name': entry.value['name'],
+              'image': entry.value['image'],
+            };
+          }).toList();
+        });
+      }
+    } catch (e) {
+      print('Error loading rooms: $e');
+    }
+  }
+
+  Future<void> _addRoomToDatabase(String name, dynamic image) async {
+    final roomRef = _databaseRef.child('rooms').push();
+    await roomRef.set({
+      'name': name,
+      'image': image is File ? image.path : image,
+    });
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
     switch (index) {
       case 0:
-        // Home (Already on this page)
+        // Home
         break;
       case 1:
+        // Room Creation
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => RoomCreation(
-              onRoomCreated: (String name, File? image) {
+              onRoomCreated: (String name, File? image) async {
+                await _addRoomToDatabase(name, image);
                 setState(() {
                   rooms.add({'name': name, 'image': image});
                 });
@@ -49,16 +80,14 @@ class _HomePageState extends State<HomePage> {
         );
         break;
       case 2:
-        // Profile page or functionality
+        // Profile
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => Profile()),
         );
-
         break;
       case 3:
-        // Settings page or functionality
-        // Add your desired action or navigation
+        // Settings
         break;
     }
   }
@@ -138,31 +167,146 @@ class _HomePageState extends State<HomePage> {
                   end: Alignment.topCenter,
                 ),
               ),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
+              child: SingleChildScrollView(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 10),
-                    // Horizontal ListView of rooms with height restricted
-                    SizedBox(
-                      height: screenHeight * 0.28,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: rooms.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: 20),
-                        itemBuilder: (context, index) {
-                          final room = rooms[index];
-                          return _buildRoomCard(
-                            context,
-                            room['name'],
-                            room['image'],
-                            screenWidth,
-                            screenHeight,
-                            index, // Pass index here
-                          );
-                        },
+                    Padding(
+                      padding: const EdgeInsets.only(left: 30, top: 20),
+                      child: Text(
+                        "Global Room's",
+                        style: TextStyle(
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      margin: EdgeInsets.only(top: 30, left: 25),
+                      width: screenWidth * 0.45,
+                      height: screenHeight * 0.24,
+                      decoration: BoxDecoration(
+                        color: const Color(0x33d5c994),
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10, bottom: 10),
+                            child: Container(
+                                height: screenHeight * 0.123,
+                                width: screenWidth * 0.35,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Image.asset(
+                                    'assets/images/Rectangle_2.png')),
+                          ),
+                          SizedBox(
+                            width: screenWidth * 0.33,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text("Global"),
+                                const Text(
+                                  "#1234",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          SizedBox(
+                            width: screenWidth * 0.35,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: const [
+                                    Icon(Icons.person),
+                                    Text(
+                                        "1/4"), // Update participant count dynamically
+                                  ],
+                                ),
+                                Container(
+                                  height: screenHeight * 0.035,
+                                  width: screenWidth * 0.19,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color.fromRGBO(37, 152, 158, 100),
+                                        Color.fromRGBO(201, 233, 236, 50),
+                                        Color.fromRGBO(122, 194, 199, 100),
+                                        Color.fromRGBO(37, 152, 158, 100),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(107),
+                                  ),
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) => Room()));
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(107),
+                                      ),
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                    child: Text("join"),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 30, top: 20),
+                      child: Text(
+                        "Custom Room's",
+                        style: TextStyle(
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 25, vertical: 20),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 10),
+                          // Horizontal ListView of rooms with height restricted
+                          SizedBox(
+                            height: screenHeight * 0.28,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: rooms.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(width: 20),
+                              itemBuilder: (context, index) {
+                                final room = rooms[index];
+                                return _buildRoomCard(
+                                  context,
+                                  room['name'],
+                                  room['image'],
+                                  screenWidth,
+                                  screenHeight,
+                                  index, // Pass index here
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -321,6 +465,8 @@ Widget _mostPopularGames(context) {
             child: ElevatedButton(
               onPressed: () {
                 // Perform some action
+                Navigator.push(
+                    context, MaterialPageRoute(builder: (context) => Room()));
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
@@ -410,34 +556,101 @@ Widget _buildRoomCard(BuildContext context, String name, dynamic image,
                   Text("1/4"), // Update participant count dynamically
                 ],
               ),
-              ElevatedButton(
-                onPressed: () {
-                  if (!isRoomFull) {
-                    // Navigate to CustomRoom if the room is not full
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CustomRoom(
-                          roomName: name,
-                          roomImage: image is File
-                              ? XFile(image.path)
-                              : null, // Pass XFile if it's a File
+              Container(
+                height: screenHeight * 0.035,
+                width: screenWidth * 0.19,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color.fromRGBO(37, 152, 158, 100),
+                      Color.fromRGBO(201, 233, 236, 50),
+                      Color.fromRGBO(122, 194, 199, 100),
+                      Color.fromRGBO(37, 152, 158, 100),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(107),
+                ),
+                child: ElevatedButton(
+                  onPressed: () async {
+                    if (!isRoomFull) {
+                      final database = FirebaseDatabase.instance;
+
+                      try {
+                        // Check if a room with the same name already exists
+                        final roomsRef = database.ref('rooms');
+                        final snapshot = await roomsRef
+                            .orderByChild('name')
+                            .equalTo(name)
+                            .get();
+
+                        String? roomId;
+
+                        if (snapshot.exists) {
+                          // Use the existing room ID
+                          roomId = snapshot.children.first.key;
+                          print('Room exists. Using existing roomId: $roomId');
+                        } else {
+                          // Generate a new room ID and create a new room entry
+                          roomId = roomsRef.push().key;
+                          if (roomId != null) {
+                            print('Creating a new room with roomId: $roomId');
+                            await roomsRef.child(roomId).set({
+                              'name': name,
+                              'image': image is File ? image.path : image,
+                              'participants': {}, // Start with no participants
+                            });
+                          } else {
+                            print('Failed to generate a roomId.');
+                            return;
+                          }
+                        }
+
+                        if (roomId != null) {
+                          // Navigate to the custom room
+                          print(
+                              'Navigating to CustomRoom with roomId: $roomId');
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CustomRoom(
+                                roomId: roomId,
+                                roomName: name,
+                                roomImage: image is File ? image.path : image,
+                              ),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        print('Error in room creation/joining: $e');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to join/create room: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    } else {
+                      // Show an error message if the room is full
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Room $name is currently full.'),
+                          backgroundColor: Colors.red,
                         ),
-                      ),
-                    );
-                  } else {
-                    // Show an error message if the room is full
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Room $name is currently full.',
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                },
-                child: Text(!isRoomFull ? "Join" : "Full"),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(107),
+                    ),
+                    padding: EdgeInsets.zero,
+                  ),
+                  child: Text(!isRoomFull ? "Join" : "Full"),
+                ),
               ),
             ],
           ),

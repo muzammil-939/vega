@@ -18,7 +18,32 @@ class _ProfileState extends State<Profile> {
   final _auth = FirebaseAuth.instance;
   final _databaseRef = FirebaseDatabase.instance.ref();
 
-  // Method to pick an image from gallery or camera
+  @override
+  void initState() {
+    super.initState();
+    _loadUsername(); // Load the username from the database when the widget initializes.
+  }
+
+  Future<void> _loadUsername() async {
+    final User? currentUser = _auth.currentUser;
+
+    if (currentUser != null) {
+      final uid = currentUser.uid;
+
+      try {
+        // Fetch the username from Firebase
+        final snapshot = await _databaseRef.child('users/$uid/username').get();
+        if (snapshot.exists) {
+          setState(() {
+            _username = snapshot.value as String?;
+          });
+        }
+      } catch (e) {
+        print("Failed to fetch username: $e");
+      }
+    }
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     final pickedFile = await ImagePicker().pickImage(source: source);
     if (pickedFile != null) {
@@ -28,26 +53,22 @@ class _ProfileState extends State<Profile> {
     }
   }
 
-  // Method to handle username submission and update the Realtime Database
   Future<void> _submitUsername() async {
     if (_usernameController.text.isNotEmpty) {
       setState(() {
         _username = _usernameController.text;
       });
 
-      // Get the current user's UID
       final User? currentUser = _auth.currentUser;
 
       if (currentUser != null) {
         final uid = currentUser.uid;
 
-        // Update the Realtime Database with the username
         try {
           await _databaseRef.child('users/$uid').update({
             'username': _usernameController.text,
           });
 
-          // Clear the TextField after updating
           _usernameController.clear();
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -90,7 +111,6 @@ class _ProfileState extends State<Profile> {
             SizedBox(
               height: screenHeight * 0.06,
             ),
-            // Check if the username is entered
             if (_username == null) ...[
               SizedBox(
                 width: screenWidth * 0.6,
@@ -121,7 +141,6 @@ class _ProfileState extends State<Profile> {
                 ),
               ),
             ] else
-              // Display the entered username under the profile picture
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10.0),
                 child: Text(
@@ -138,7 +157,6 @@ class _ProfileState extends State<Profile> {
     );
   }
 
-  // Show a dialog to choose the image source
   void _showImageSourceSelector(BuildContext context) {
     showModalBottomSheet(
       context: context,
