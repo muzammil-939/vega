@@ -87,7 +87,11 @@ class _HomePageState extends State<HomePage> {
         );
         break;
       case 3:
-        // Settings
+        //Settings
+        // Navigator.push(
+        //   context,
+        //   MaterialPageRoute(builder: (context) => SettingsPage()),
+        // );
         break;
     }
   }

@@ -136,12 +136,21 @@ class PhoneAuthNotifier extends StateNotifier<PhoneAuthState> {
     return uniqueUid;
   }
 
-  // Future<void> signInWithSmsCode(String smsCode) async {
+  // Future<void> logout(WidgetRef ref) async {
   //   final auth = ref.read(firebaseAuthProvider);
-  //   final credential = PhoneAuthProvider.credential(
-  //     verificationId: state.verificationId,
-  //     smsCode: smsCode,
-  //   );
-  //   await auth.signInWithCredential(credential);
+  //   final prefs = await SharedPreferences.getInstance();
+  //
+  //   try {
+  //     // Clear Firebase token and sign out
+  //     await prefs.remove('firebaseToken');
+  //     await auth.signOut();
+  //
+  //     // Reset the state
+  //     state = PhoneAuthState(verificationId: '');
+  //
+  //     print("User logged out successfully.");
+  //   } catch (e) {
+  //     print("Error during logout: $e");
+  //   }
   // }
 }

@@ -5,6 +5,7 @@ import 'package:vega/providers/loader.dart';
 import 'package:vega/screens/home.dart';
 import '../providers/firebase_auth.dart';
 import '../states/fb_sign_in.dart';
+import 'otp_input.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -15,17 +16,19 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final phoneController = TextEditingController(text: "+91");
-  final List<TextEditingController> otpControllers =
-      List.generate(6, (index) => TextEditingController());
+  List<TextEditingController> otpControllers = List.generate(
+    6, // Replace with the number of OTP fields
+    (index) => TextEditingController(),
+  );
 
-  @override
-  void dispose() {
-    phoneController.dispose();
-    for (var controller in otpControllers) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
+  // @override
+  // void dispose() {
+  //   phoneController.dispose();
+  //   for (var controller in otpControllers) {
+  //     controller.dispose();
+  //   }
+  //   super.dispose();
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -154,15 +157,21 @@ class _LoginScreenState extends State<LoginScreen> {
                               borderRadius: BorderRadius.circular(107),
                             ),
                             child: ElevatedButton(
-                              onPressed: loader == true
+                              onPressed: loader
                                   ? null
                                   : () async {
                                       String phoneNumber =
                                           phoneController.text.trim();
-                                      if (phoneNumber.startsWith("+91") &&
-                                          phoneNumber.length == 13 &&
-                                          RegExp(r'^[6-9]\d{9}$').hasMatch(
-                                              phoneNumber.substring(3))) {
+
+                                      // Check if the phone number matches the required format
+                                      bool isValid =
+                                          phoneNumber.startsWith("+91") &&
+                                              phoneNumber.length == 13 &&
+                                              RegExp(r'^[6-9]\d{9}$').hasMatch(
+                                                  phoneNumber.substring(3));
+
+                                      if (isValid) {
+                                        // Attempt to send the OTP
                                         await phoneAuthNotifier
                                             .verifyPhoneNumber(phoneNumber, ref,
                                                 () {
@@ -170,25 +179,59 @@ class _LoginScreenState extends State<LoginScreen> {
                                             codesent = true;
                                           });
                                         });
+
+                                        // Check if the code was successfully sent
                                         if (codesent) {
                                           showModalBottomSheet(
                                             context: context,
                                             isScrollControlled: true,
                                             builder: (BuildContext context) {
-                                              return buildOtpModal(
-                                                  context,
-                                                  screenHeight,
-                                                  screenWidth,
-                                                  ref);
+                                              return Padding(
+                                                padding: EdgeInsets.only(
+                                                  bottom: MediaQuery.of(context)
+                                                      .viewInsets
+                                                      .bottom,
+                                                ),
+                                                child: Container(
+                                                  decoration:
+                                                      const BoxDecoration(
+                                                    gradient: LinearGradient(
+                                                      colors: [
+                                                        Color(0xffc9e9ec),
+                                                        Color(0xffffffff)
+                                                      ],
+                                                      begin:
+                                                          Alignment.topCenter,
+                                                      end: Alignment
+                                                          .bottomCenter,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.vertical(
+                                                      top: Radius.circular(24),
+                                                    ),
+                                                  ),
+                                                  child: OTPInputScreen(
+                                                      otpControllers, ref),
+                                                ),
+                                              );
                                             },
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                  'Something went wrong. Please try again.'),
+                                            ),
                                           );
                                         }
                                       } else {
+                                        // Invalid phone number
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
                                           SnackBar(
                                             content: Text(
-                                                'Please enter a valid 10-digit mobile number after +91.'),
+                                                'Please enter a valid 10-digit mobile number.'),
                                           ),
                                         );
                                       }
@@ -201,7 +244,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                               child: FittedBox(
-                                child: loader == true
+                                child: loader
                                     ? CircularProgressIndicator(
                                         color: Colors.white)
                                     : Text(
@@ -216,8 +259,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ],
                       ),
-                      if (codesent == true)
-                        buildOtpModal(context, screenHeight, screenWidth, ref),
                       SizedBox(height: screenHeight * 0.025),
                       Text(
                         "Or Login with",
@@ -302,118 +343,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget buildOtpModal(BuildContext context, double screenHeight,
-      double screenWidth, WidgetRef ref) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xffc9e9ec), Color(0xffffffff)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(height: screenHeight * 0.07),
-            Text(
-              "One Time Password",
-              style: TextStyle(
-                fontSize: screenWidth * 0.045,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 30, bottom: 30),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  otpControllers.length,
-                  (index) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: SizedBox(
-                      width: 40,
-                      child: TextFormField(
-                        controller: otpControllers[index],
-                        textAlign: TextAlign.center,
-                        keyboardType: TextInputType.number,
-                        maxLength: 1,
-                        decoration: InputDecoration(
-                          counterText: '', // Hide the counter
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onChanged: (value) {
-                          if (value.length == 1 &&
-                              index < otpControllers.length - 1) {
-                            FocusScope.of(context).nextFocus();
-                          } else if (value.isEmpty && index > 0) {
-                            FocusScope.of(context).previousFocus();
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            // Remaining OTP Modal code...
-
-            Container(
-              height: screenHeight * 0.06,
-              width: screenWidth * 0.35,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color.fromRGBO(37, 152, 158, 100),
-                    Color.fromRGBO(201, 233, 236, 50),
-                    Color.fromRGBO(122, 194, 199, 100),
-                    Color.fromRGBO(37, 152, 158, 100),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(107),
-              ),
-              child: ElevatedButton(
-                onPressed: () {
-                  String smsCode = otpControllers
-                      .map((controller) => controller.text)
-                      .join();
-                  ref
-                      .read(phoneAuthProvider.notifier)
-                      .signInWithPhoneNumber(smsCode, ref);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(107),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    'Verify',
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.05,
-                      color: const Color(0xff025253),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
