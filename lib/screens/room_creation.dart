@@ -49,7 +49,7 @@ class _RoomCreationState extends State<RoomCreation> {
               leading: const Icon(Icons.camera_alt),
               title: const Text('Camera'),
               onTap: () async {
-                Navigator.pop(context); // Close the bottom sheet
+                Navigator.pop(context);
                 final pickedImage =
                     await _picker.pickImage(source: ImageSource.camera);
                 if (pickedImage != null) {

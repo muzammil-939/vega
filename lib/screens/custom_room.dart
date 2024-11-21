@@ -107,7 +107,7 @@ class _CustomRoomState extends State<CustomRoom> {
       if (data == null) return;
 
       setState(() {
-        // For each user in the room, assign an avatar
+        // assign an avatar
         for (var entry in data.entries) {
           final username = entry.value['username'] as String;
           _assignAvatar(username);

@@ -500,7 +500,7 @@ Widget _mostPopularGames(context) {
 Widget _buildRoomCard(BuildContext context, String name, dynamic image,
     double screenWidth, double screenHeight, int index) {
   bool isRoomFull =
-      false; // Replace this with your actual logic to determine if the room is full
+      false; // Replace this with your  logic to determine if the room is full
 
   return Container(
     width: screenWidth * 0.45,
