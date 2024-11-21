@@ -15,6 +15,7 @@ class _ProfileState extends State<Profile> {
   File? _imageFile;
   final _usernameController = TextEditingController();
   String? _username;
+  bool _isLoading = false; // For loading indicators
   final _auth = FirebaseAuth.instance;
   final _databaseRef = FirebaseDatabase.instance.ref();
 
@@ -31,7 +32,10 @@ class _ProfileState extends State<Profile> {
       final uid = currentUser.uid;
 
       try {
-        // Fetch the username from Firebase
+        setState(() {
+          _isLoading = true; // Start loading
+        });
+
         final snapshot = await _databaseRef.child('users/$uid/username').get();
         if (snapshot.exists) {
           setState(() {
@@ -40,6 +44,10 @@ class _ProfileState extends State<Profile> {
         }
       } catch (e) {
         print("Failed to fetch username: $e");
+      } finally {
+        setState(() {
+          _isLoading = false; // Stop loading
+        });
       }
     }
   }
@@ -54,107 +62,46 @@ class _ProfileState extends State<Profile> {
   }
 
   Future<void> _submitUsername() async {
-    if (_usernameController.text.isNotEmpty) {
-      setState(() {
-        _username = _usernameController.text;
-      });
+    if (_usernameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a username')),
+      );
+      return;
+    }
 
-      final User? currentUser = _auth.currentUser;
+    final User? currentUser = _auth.currentUser;
 
-      if (currentUser != null) {
-        final uid = currentUser.uid;
+    if (currentUser != null) {
+      final uid = currentUser.uid;
 
-        try {
-          await _databaseRef.child('users/$uid').update({
-            'username': _usernameController.text,
-          });
+      try {
+        setState(() {
+          _isLoading = true; // Start loading
+        });
 
-          _usernameController.clear();
+        // Save username to Firebase
+        await _databaseRef.child('users/$uid').update({
+          'username': _usernameController.text.trim(),
+        });
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Username updated successfully!')),
-          );
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update username: $e')),
-          );
-        }
+        setState(() {
+          _username = _usernameController.text.trim();
+        });
+
+        _usernameController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Username updated successfully!')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update username: $e')),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false; // Stop loading
+        });
       }
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Profile"),
-      ),
-      body: SizedBox(
-        width: screenWidth,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            GestureDetector(
-              onTap: () => _showImageSourceSelector(context),
-              child: CircleAvatar(
-                radius: 50,
-                backgroundImage:
-                    _imageFile != null ? FileImage(_imageFile!) : null,
-                child: _imageFile == null
-                    ? const Icon(Icons.add_a_photo, size: 30)
-                    : null,
-              ),
-            ),
-            SizedBox(
-              height: screenHeight * 0.06,
-            ),
-            if (_username == null) ...[
-              SizedBox(
-                width: screenWidth * 0.6,
-                child: TextField(
-                  controller: _usernameController,
-                  decoration: InputDecoration(
-                    hintText: 'Enter Username',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30.0),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20.0,
-                      vertical: 20.0,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(
-                height: screenHeight * 0.03,
-              ),
-              ElevatedButton(
-                onPressed: _submitUsername,
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple[900]),
-                child: const Text(
-                  'SAVE',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ] else
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10.0),
-                child: Text(
-                  _username!,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _showImageSourceSelector(BuildContext context) {
@@ -180,6 +127,84 @@ class _ProfileState extends State<Profile> {
           ),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Profile"),
+      ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator()) // Show loading spinner
+          : SizedBox(
+              width: screenWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: () => _showImageSourceSelector(context),
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundImage:
+                          _imageFile != null ? FileImage(_imageFile!) : null,
+                      child: _imageFile == null
+                          ? const Icon(Icons.add_a_photo, size: 30)
+                          : null,
+                    ),
+                  ),
+                  SizedBox(
+                    height: screenHeight * 0.06,
+                  ),
+                  if (_username == null) ...[
+                    SizedBox(
+                      width: screenWidth * 0.6,
+                      child: TextField(
+                        controller: _usernameController,
+                        decoration: InputDecoration(
+                          hintText: 'Enter Username',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30.0),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20.0,
+                            vertical: 20.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: screenHeight * 0.03,
+                    ),
+                    ElevatedButton(
+                      onPressed: _submitUsername,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple[900],
+                      ),
+                      child: const Text(
+                        'SAVE',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ] else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                      child: Text(
+                        'Welcome, $_username!',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
     );
   }
 }
