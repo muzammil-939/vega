@@ -15,14 +15,14 @@ class _ProfileState extends State<Profile> {
   File? _imageFile;
   final _usernameController = TextEditingController();
   String? _username;
-  bool _isLoading = false; // For loading indicators
+  bool _isLoading = false;
   final _auth = FirebaseAuth.instance;
   final _databaseRef = FirebaseDatabase.instance.ref();
 
   @override
   void initState() {
     super.initState();
-    _loadUsername(); // Load the username from the database when the widget initializes.
+    _loadUsername();
   }
 
   Future<void> _loadUsername() async {
@@ -33,7 +33,7 @@ class _ProfileState extends State<Profile> {
 
       try {
         setState(() {
-          _isLoading = true; // Start loading
+          _isLoading = true;
         });
 
         final snapshot = await _databaseRef.child('users/$uid/username').get();
@@ -43,25 +43,26 @@ class _ProfileState extends State<Profile> {
           });
         }
       } catch (e) {
-        print("Failed to fetch username: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to fetch username: $e")),
+        );
       } finally {
         setState(() {
-          _isLoading = false; // Stop loading
+          _isLoading = false;
         });
       }
     }
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    final pickedFile = await ImagePicker().pickImage(source: source);
-    if (pickedFile != null) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-      });
-    }
-  }
-
   Future<void> _submitUsername() async {
+    if (_username != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Username is already set and cannot be changed.')),
+      );
+      return;
+    }
+
     if (_usernameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a username')),
@@ -76,10 +77,9 @@ class _ProfileState extends State<Profile> {
 
       try {
         setState(() {
-          _isLoading = true; // Start loading
+          _isLoading = true;
         });
 
-        // Save username to Firebase
         await _databaseRef.child('users/$uid').update({
           'username': _usernameController.text.trim(),
         });
@@ -98,7 +98,7 @@ class _ProfileState extends State<Profile> {
         );
       } finally {
         setState(() {
-          _isLoading = false; // Stop loading
+          _isLoading = false;
         });
       }
     }
@@ -130,6 +130,15 @@ class _ProfileState extends State<Profile> {
     );
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    final pickedFile = await ImagePicker().pickImage(source: source);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -140,8 +149,7 @@ class _ProfileState extends State<Profile> {
         title: const Text("Profile"),
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator()) // Show loading spinner
+          ? const Center(child: CircularProgressIndicator())
           : SizedBox(
               width: screenWidth,
               child: Column(
@@ -158,9 +166,7 @@ class _ProfileState extends State<Profile> {
                           : null,
                     ),
                   ),
-                  SizedBox(
-                    height: screenHeight * 0.06,
-                  ),
+                  SizedBox(height: screenHeight * 0.06),
                   if (_username == null) ...[
                     SizedBox(
                       width: screenWidth * 0.6,
@@ -178,11 +184,9 @@ class _ProfileState extends State<Profile> {
                         ),
                       ),
                     ),
-                    SizedBox(
-                      height: screenHeight * 0.03,
-                    ),
+                    SizedBox(height: screenHeight * 0.03),
                     ElevatedButton(
-                      onPressed: _submitUsername,
+                      onPressed: _isLoading ? null : _submitUsername,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.purple[900],
                       ),

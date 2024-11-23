@@ -33,12 +33,12 @@ class _CustomRoomState extends State<CustomRoom> {
   void initState() {
     super.initState();
     _initializeChatRoom();
-    _fetchOrCreateUsername().then((_) {
+    _fetchUsername().then((_) {
       _initializeAvatars();
     });
   }
 
-  Future<void> _fetchOrCreateUsername() async {
+  Future<void> _fetchUsername() async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return;
 
@@ -46,17 +46,13 @@ class _CustomRoomState extends State<CustomRoom> {
     final userSnapshot = await userRef.get();
 
     if (userSnapshot.exists && userSnapshot.child('username').exists) {
-      _username = userSnapshot.child('username').value as String;
+      setState(() {
+        _username = userSnapshot.child('username').value as String;
+      });
     } else {
-      final userCountRef = FirebaseDatabase.instance.ref('user_count');
-      final userCountSnapshot = await userCountRef.get();
-      int userNumber =
-          userCountSnapshot.exists ? userCountSnapshot.value as int : 0;
-      userNumber++;
-
-      _username = 'user$userNumber';
-      await userRef.set({'username': _username});
-      await userCountRef.set(userNumber);
+      setState(() {
+        _username = 'unknown user';
+      });
     }
   }
 
