@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vega/providers/loader.dart';
 
-import '../models/authstate.dart';
+import '../models/authstate_model.dart';
 import '../providers/firebase_auth.dart';
 
 class PhoneAuthNotifier extends StateNotifier<PhoneAuthState> {
@@ -37,53 +37,66 @@ class PhoneAuthNotifier extends StateNotifier<PhoneAuthState> {
       String phoneNumber, WidgetRef ref, Function verifyotp) async {
     final auth = ref.read(firebaseAuthProvider);
     var loader = ref.read(loadingProvider.notifier);
-    var codesent = ref.read(codeSent.notifier);
+    var codeSentNotifier = ref.read(codeSentProvider.notifier);
     loader.state = true;
-    await auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        loader.state = false;
-        await auth.signInWithCredential(credential);
-        state = PhoneAuthState(verificationId: '');
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        loader.state = false;
-        state = PhoneAuthState(verificationId: '', error: e.message);
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        loader.state = false;
-        state = PhoneAuthState(verificationId: verificationId);
-        codesent.state = true;
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {
-        loader.state = false;
-        state = PhoneAuthState(verificationId: verificationId);
-      },
-    );
+
+    try {
+      await auth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          loader.state = false;
+          await auth.signInWithCredential(credential);
+          state = PhoneAuthState(verificationId: '');
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          loader.state = false;
+          print("Verification failed: ${e.message}");
+          state = PhoneAuthState(verificationId: '', error: e.message);
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          loader.state = false;
+          print("Verification code sent: $verificationId");
+          state = PhoneAuthState(verificationId: verificationId);
+          codeSentNotifier.state = true; // Update the codeSentProvider
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          loader.state = false;
+          print("Auto-retrieval timeout. Verification ID: $verificationId");
+          state = PhoneAuthState(verificationId: verificationId);
+        },
+      );
+    } catch (e) {
+      loader.state = false;
+      print("Error during phone verification: $e");
+      state = PhoneAuthState(verificationId: '', error: e.toString());
+    }
   }
 
   Future<void> signInWithPhoneNumber(String smsCode, WidgetRef ref) async {
     final authState = ref.watch(firebaseAuthProvider);
     final loadingState = ref.watch(loadingProvider.notifier);
-    print("entered in phone verification");
 
     try {
       loadingState.state = true;
+
+      if (state.verificationId.isEmpty) {
+        throw "Verification ID is missing. Please request a new OTP.";
+      }
 
       AuthCredential credential = PhoneAuthProvider.credential(
           verificationId: state.verificationId, smsCode: smsCode);
 
       await authState.signInWithCredential(credential).then((value) async {
         if (value.user != null) {
-          print("phone verification Successful");
+          print("Phone verification successful.");
 
           // Generate a custom UID
           String customUid =
               "#${(100000 + DateTime.now().millisecondsSinceEpoch % 900000)}";
           String? firebaseToken = await value.user?.getIdToken();
-          // Get the database
           SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString('firebaseToken', firebaseToken!);
+
           final databaseReference =
               FirebaseDatabase.instance.ref("users/${value.user!.uid}");
 
@@ -95,7 +108,6 @@ class PhoneAuthNotifier extends StateNotifier<PhoneAuthState> {
               "uid": customUid,
               "phoneNumber": value.user!.phoneNumber,
               "createdAt": DateTime.now().toIso8601String(),
-              // Add other user details if needed
             });
             print("User data successfully stored in Firebase.");
           } catch (dbError) {
@@ -108,6 +120,7 @@ class PhoneAuthNotifier extends StateNotifier<PhoneAuthState> {
     } catch (e) {
       loadingState.state = false;
       print("Error during phone verification: $e");
+      state = state.copyWith(error: e.toString());
     } finally {
       loadingState.state = false;
     }
@@ -135,22 +148,4 @@ class PhoneAuthNotifier extends StateNotifier<PhoneAuthState> {
 
     return uniqueUid;
   }
-
-  // Future<void> logout(WidgetRef ref) async {
-  //   final auth = ref.read(firebaseAuthProvider);
-  //   final prefs = await SharedPreferences.getInstance();
-  //
-  //   try {
-  //     // Clear Firebase token and sign out
-  //     await prefs.remove('firebaseToken');
-  //     await auth.signOut();
-  //
-  //     // Reset the state
-  //     state = PhoneAuthState(verificationId: '');
-  //
-  //     print("User logged out successfully.");
-  //   } catch (e) {
-  //     print("Error during logout: $e");
-  //   }
-  // }
 }

@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:vega/screens/home.dart';
 import '../providers/firebase_auth.dart';
 
-class OTPInputScreen extends StatelessWidget {
+class OTPInputScreen extends ConsumerStatefulWidget {
   final List<TextEditingController> otpControllers;
-  final WidgetRef ref;
 
-  OTPInputScreen(this.otpControllers, this.ref);
+  OTPInputScreen(this.otpControllers, {super.key});
 
+  @override
+  _OTPInputScreenState createState() => _OTPInputScreenState();
+}
+
+class _OTPInputScreenState extends ConsumerState<OTPInputScreen> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -29,13 +34,13 @@ class OTPInputScreen extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-              otpControllers.length,
+              widget.otpControllers.length,
               (index) => Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
                 child: SizedBox(
                   width: 40,
                   child: TextFormField(
-                    controller: otpControllers[index],
+                    controller: widget.otpControllers[index],
                     textAlign: TextAlign.center,
                     keyboardType: TextInputType.number,
                     maxLength: 1,
@@ -47,7 +52,7 @@ class OTPInputScreen extends StatelessWidget {
                     ),
                     onChanged: (value) {
                       if (value.length == 1 &&
-                          index < otpControllers.length - 1) {
+                          index < widget.otpControllers.length - 1) {
                         FocusScope.of(context).nextFocus();
                       } else if (value.isEmpty && index > 0) {
                         FocusScope.of(context).previousFocus();
@@ -79,14 +84,27 @@ class OTPInputScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(107),
           ),
           child: ElevatedButton(
-            onPressed: () {
-              String smsCode =
-                  otpControllers.map((controller) => controller.text).join();
-              if (smsCode.length == otpControllers.length) {
-                ref
-                    .read(phoneAuthProvider.notifier)
-                    .signInWithPhoneNumber(smsCode, ref);
-                Navigator.pop(context);
+            onPressed: () async {
+              String smsCode = widget.otpControllers
+                  .map((controller) => controller.text)
+                  .join();
+              if (smsCode.length == widget.otpControllers.length) {
+                try {
+                  await ref
+                      .read(phoneAuthProvider.notifier)
+                      .signInWithPhoneNumber(smsCode, ref);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("OTP Verified Successfully!")),
+                  );
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => HomePage()),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Failed to verify OTP: $e")),
+                  );
+                }
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text("Please enter the complete OTP.")),
