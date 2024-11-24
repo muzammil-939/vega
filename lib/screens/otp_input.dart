@@ -4,8 +4,10 @@ import 'package:vega/screens/home.dart';
 import '../providers/firebase_auth.dart';
 
 class OTPInputScreen extends ConsumerStatefulWidget {
-  final List<TextEditingController> otpControllers;
-
+  List<TextEditingController> otpControllers = List.generate(
+    6, // Replace with the number of OTP fields
+    (index) => TextEditingController(),
+  );
   OTPInputScreen(this.otpControllers, {super.key});
 
   @override

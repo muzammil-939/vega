@@ -29,15 +29,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // @override
-  // void dispose() {
-  //   phoneController.dispose();
-  //   for (var controller in otpControllers) {
-  //     controller.dispose();
-  //   }
-  //   super.dispose();
-  // }
-
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;

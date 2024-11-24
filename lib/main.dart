@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vega/screens/home.dart';
 import 'package:vega/screens/login_page.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:vega/screens/room.dart';
 import 'firebase_options.dart';
 import 'providers/firebase_auth.dart';
 
@@ -69,6 +70,7 @@ class MyApp extends StatelessWidget {
           },
         );
       },
+      '/login': (context) => Room(),
     });
     // This trailing comma makes auto-formatting nicer for build methods.
   }

@@ -21,6 +21,7 @@ class _RoomState extends State<Room> {
   Map<String, Widget> _userAvatars =
       {}; // Map to store avatar widgets for each user
   List<Widget> micButtons = [];
+
   @override
   void initState() {
     super.initState();
@@ -144,6 +145,57 @@ class _RoomState extends State<Room> {
     _controller.clear();
   }
 
+  /// Clear user messages
+  void _clearUserMessages() {
+    final senderId = _auth.currentUser?.uid;
+
+    if (senderId != null && _sessionRef != null) {
+      // Clear messages in Firebase Realtime Database
+      _sessionRef!.once().then((snapshot) {
+        final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
+
+        if (data != null) {
+          for (var entry in data.entries) {
+            final message = entry.value as Map<dynamic, dynamic>;
+            if (message['senderId'] == senderId) {
+              _sessionRef!.child(entry.key).remove();
+            }
+          }
+        }
+      });
+
+      // Clear messages locally
+      setState(() {
+        _messages.removeWhere((message) => message['senderId'] == senderId);
+      });
+    }
+  }
+
+  /// Show a confirmation dialog
+  Future<bool> _showExitConfirmationDialog() async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Exit Chat'),
+              content: const Text(
+                  'Are you sure you want to exit and clear your chat history?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('No'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Yes'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false; // Return false if dialog is dismissed
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -165,193 +217,203 @@ class _RoomState extends State<Room> {
         ),
       ),
       resizeToAvoidBottomInset: true,
-      // This helps to resize when the keyboard appears
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Host UI
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Column(
-                  children: [
-                    const Text(
-                      'Host',
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Container(
-                      width: screenWidth * 0.2,
-                      height: screenWidth * 0.2,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[700],
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          width: 2,
-                          style: BorderStyle.solid,
-                          color: const Color(0x33ffffff),
+      body: WillPopScope(
+        onWillPop: () async {
+          final shouldLeave = await _showExitConfirmationDialog();
+          if (shouldLeave) {
+            _clearUserMessages();
+          }
+          return shouldLeave;
+        },
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Host UI
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Column(
+                    children: [
+                      const Text(
+                        'Host',
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.white,
                         ),
                       ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 40,
-                        color: Colors.white,
+                      Container(
+                        width: screenWidth * 0.2,
+                        height: screenWidth * 0.2,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[700],
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            width: 2,
+                            style: BorderStyle.solid,
+                            color: const Color(0x33ffffff),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.person,
+                          size: 40,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
 
-            // Microphone UI
-            Align(
-              alignment: Alignment.topCenter,
-              child: Container(
-                margin: const EdgeInsets.only(top: 5),
-                width: screenWidth * 0.8,
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+              // Microphone UI
+              Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  margin: const EdgeInsets.only(top: 5),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
                       children: [
-                        ..._userAvatars.values.map((avatar) => avatar).toList(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: List.generate(
+                              5, (index) => buildMicContainer(index)),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: List.generate(
+                              5, (index) => buildMicContainer(index + 5)),
+                        ),
                       ],
                     ),
-                    SizedBox(height: screenHeight * 0.05),
-                    // Row(
-                    //   mainAxisAlignment: MainAxisAlignment.start,
-                    //   children: [
-                    //     buildMicButton(4),
-                    //     buildMicButton(5),
-                    //     buildMicButton(6),
-                    //     buildMicButton(7),
-                    //   ],
-                    //),
-                  ],
+                  ),
                 ),
               ),
-            ),
-            SizedBox(
-              height: screenHeight * 0.04,
-            ),
 
-            // Chat UI
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(8.0),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.only(
+              const SizedBox(height: 20),
+
+              // Chat UI
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.only(
                       topRight: Radius.circular(30),
-                      topLeft: Radius.circular(30)),
-                ),
-                child: SingleChildScrollView(
-                  reverse: true, // Makes the scroll view start from the bottom
-                  child: Column(
-                    children: [
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final message = _messages[index];
-                          final isUser =
-                              message['senderId'] == _auth.currentUser?.uid;
-                          final userName = message['sender']!;
-                          final avatarWidget = _userAvatars[userName];
+                      topLeft: Radius.circular(30),
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    reverse:
+                        true, // Makes the scroll view start from the bottom
+                    child: Column(
+                      children: [
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _messages.length,
+                          itemBuilder: (context, index) {
+                            final message = _messages[index];
+                            final isUser =
+                                message['senderId'] == _auth.currentUser?.uid;
+                            final userName = message['sender']!;
+                            final avatarWidget = _userAvatars[userName];
 
-                          return Align(
-                            alignment: isUser
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
-                            child: Row(
-                              mainAxisAlignment: isUser
-                                  ? MainAxisAlignment.end
-                                  : MainAxisAlignment.start,
-                              children: [
-                                if (!isUser)
-                                  avatarWidget ??
-                                      Container(), // Display avatar if it exists
-                                Container(
-                                  margin: const EdgeInsets.symmetric(
-                                      vertical: 4, horizontal: 8),
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: isUser
-                                        ? Colors.blueAccent
-                                        : Colors.grey[700],
-                                    borderRadius: BorderRadius.circular(10),
+                            return Align(
+                              alignment: isUser
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
+                              child: Row(
+                                mainAxisAlignment: isUser
+                                    ? MainAxisAlignment.end
+                                    : MainAxisAlignment.start,
+                                children: [
+                                  if (!isUser)
+                                    avatarWidget ??
+                                        Container(), // Display avatar if it exists
+                                  Container(
+                                    margin: const EdgeInsets.symmetric(
+                                        vertical: 4, horizontal: 8),
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: isUser
+                                          ? Colors.blueAccent
+                                          : Colors.grey[700],
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '${userName}: ${message['text']}',
+                                      style:
+                                          const TextStyle(color: Colors.white),
+                                    ),
                                   ),
-                                  child: Text(
-                                    '${userName}: ${message['text']}',
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Message Input
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: 'Enter message...',
+                            hintStyle: const TextStyle(color: Colors.grey),
+                            filled: true,
+                            fillColor: Colors.grey[800],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                          );
-                        },
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.send, color: Colors.blueAccent),
+                        onPressed: _sendMessage,
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
-
-            // Message Input
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Enter message...',
-                          hintStyle: const TextStyle(color: Colors.grey),
-                          filled: true,
-                          fillColor: Colors.grey[800],
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.send, color: Colors.blueAccent),
-                      onPressed: _sendMessage,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget buildMicButton(int index) {
+  /// Build mic container or avatar if tapped
+  Widget buildMicContainer(int index) {
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // If button is tapped, display the avatar
-    if (tappedButtons.containsKey(index) && tappedButtons[index] != null) {
+    // If the mic container has been tapped and replaced by an avatar
+    if (tappedButtons.containsKey(index)) {
       return tappedButtons[index]!;
     }
 
-    // Default mic button
+    // Default mic container
     return GestureDetector(
       onTap: () {
-        setState(() {
-          // Assign an avatar and store it in the tappedButtons map
-          final userName = _userName ?? 'Guest $index'; // Example username
-          tappedButtons[index] = _assignAvatarForUser(userName);
-        });
+        if (_userName != null &&
+            !tappedButtons.values.contains(_userAvatars[_userName!])) {
+          setState(() {
+            // Assign an avatar and store it in the tappedButtons map
+            tappedButtons[index] = _assignAvatarForUser(_userName!);
+          });
+        }
       },
       child: Container(
         width: screenWidth * 0.13,
@@ -360,7 +422,7 @@ class _RoomState extends State<Room> {
           color: Colors.grey,
           borderRadius: BorderRadius.circular(50),
         ),
-        child: const Icon(Icons.mic),
+        child: const Icon(Icons.mic, color: Colors.white),
       ),
     );
   }
@@ -373,8 +435,8 @@ class _RoomState extends State<Room> {
         ClipOval(
           child: Image.asset(
             'assets/images/man-sample-1.png',
-            width: screenWidth * 0.12,
-            height: screenWidth * 0.12,
+            width: screenWidth * 0.1,
+            height: screenWidth * 0.1,
             fit: BoxFit.cover,
           ),
         ),
@@ -382,8 +444,8 @@ class _RoomState extends State<Room> {
           margin: EdgeInsets.symmetric(horizontal: 10),
           child: Image.asset(
             'assets/images/gold-frame.png',
-            width: screenWidth * 0.17,
-            height: screenWidth * 0.17,
+            width: screenWidth * 0.15,
+            height: screenWidth * 0.15,
             fit: BoxFit.cover,
           ),
         ),
@@ -399,8 +461,8 @@ class _RoomState extends State<Room> {
         ClipOval(
           child: Image.asset(
             'assets/images/man-sample-2.png',
-            width: screenWidth * 0.12,
-            height: screenWidth * 0.12,
+            width: screenWidth * 0.1,
+            height: screenWidth * 0.1,
             fit: BoxFit.cover,
           ),
         ),
@@ -408,8 +470,8 @@ class _RoomState extends State<Room> {
           margin: EdgeInsets.symmetric(horizontal: 10),
           child: Image.asset(
             'assets/images/decorative-round.png',
-            width: screenWidth * 0.175,
-            height: screenWidth * 0.175,
+            width: screenWidth * 0.155,
+            height: screenWidth * 0.155,
             fit: BoxFit.cover,
           ),
         ),
@@ -425,8 +487,8 @@ class _RoomState extends State<Room> {
         ClipOval(
           child: Image.asset(
             'assets/images/man-sample-3.jpg',
-            width: screenWidth * 0.12,
-            height: screenWidth * 0.12,
+            width: screenWidth * 0.1,
+            height: screenWidth * 0.1,
             fit: BoxFit.cover,
           ),
         ),
@@ -434,8 +496,8 @@ class _RoomState extends State<Room> {
           margin: EdgeInsets.symmetric(horizontal: 10),
           child: Image.asset(
             'assets/images/gold-frame.png',
-            width: screenWidth * 0.17,
-            height: screenWidth * 0.17,
+            width: screenWidth * 0.15,
+            height: screenWidth * 0.15,
             fit: BoxFit.cover,
           ),
         ),
