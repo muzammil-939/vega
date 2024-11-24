@@ -15,6 +15,8 @@ class _ProfileState extends State<Profile> {
   File? _imageFile;
   final _usernameController = TextEditingController();
   String? _username;
+  String? _uid;
+  bool _isEditing = false; // Controls if the username is being edited
   bool _isLoading = false;
   final _auth = FirebaseAuth.instance;
   final _databaseRef = FirebaseDatabase.instance.ref();
@@ -22,10 +24,10 @@ class _ProfileState extends State<Profile> {
   @override
   void initState() {
     super.initState();
-    _loadUsername();
+    _loadUserData();
   }
 
-  Future<void> _loadUsername() async {
+  Future<void> _loadUserData() async {
     final User? currentUser = _auth.currentUser;
 
     if (currentUser != null) {
@@ -36,15 +38,25 @@ class _ProfileState extends State<Profile> {
           _isLoading = true;
         });
 
-        final snapshot = await _databaseRef.child('users/$uid/username').get();
-        if (snapshot.exists) {
+        // Fetch username
+        final usernameSnapshot =
+            await _databaseRef.child('users/$uid/username').get();
+        if (usernameSnapshot.exists) {
           setState(() {
-            _username = snapshot.value as String?;
+            _username = usernameSnapshot.value as String?;
+          });
+        }
+
+        // Fetch UID from 'users/$uid/uid'
+        final uidSnapshot = await _databaseRef.child('users/$uid/uid').get();
+        if (uidSnapshot.exists) {
+          setState(() {
+            _uid = uidSnapshot.value as String?;
           });
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to fetch username: $e")),
+          SnackBar(content: Text("Failed to fetch user data: $e")),
         );
       } finally {
         setState(() {
@@ -54,15 +66,7 @@ class _ProfileState extends State<Profile> {
     }
   }
 
-  Future<void> _submitUsername() async {
-    if (_username != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Username is already set and cannot be changed.')),
-      );
-      return;
-    }
-
+  Future<void> _updateUsername() async {
     if (_usernameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a username')),
@@ -86,9 +90,9 @@ class _ProfileState extends State<Profile> {
 
         setState(() {
           _username = _usernameController.text.trim();
+          _isEditing = false;
         });
 
-        _usernameController.clear();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Username updated successfully!')),
         );
@@ -166,43 +170,59 @@ class _ProfileState extends State<Profile> {
                           : null,
                     ),
                   ),
-                  SizedBox(height: screenHeight * 0.06),
-                  if (_username == null) ...[
-                    SizedBox(
-                      width: screenWidth * 0.6,
-                      child: TextField(
-                        controller: _usernameController,
-                        decoration: InputDecoration(
-                          hintText: 'Enter Username',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30.0),
+                  SizedBox(height: screenHeight * 0.03),
+                  // Display username and allow editing
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_isEditing)
+                        SizedBox(
+                          width: screenWidth * 0.6,
+                          child: TextField(
+                            controller: _usernameController,
+                            decoration: InputDecoration(
+                              hintText: 'Edit Username',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30.0),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20.0,
+                                vertical: 10.0,
+                              ),
+                            ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20.0,
-                            vertical: 20.0,
+                        )
+                      else
+                        Text(
+                          _username ?? 'Loading...',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
+                      IconButton(
+                        icon: Icon(_isEditing ? Icons.check : Icons.edit),
+                        onPressed: () {
+                          if (_isEditing) {
+                            _updateUsername();
+                          } else {
+                            setState(() {
+                              _isEditing = true;
+                              _usernameController.text = _username ?? '';
+                            });
+                          }
+                        },
                       ),
-                    ),
-                    SizedBox(height: screenHeight * 0.03),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _submitUsername,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple[900],
-                      ),
-                      child: const Text(
-                        'SAVE',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ] else
+                    ],
+                  ),
+                  if (_uid != null)
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                      padding: const EdgeInsets.only(top: 8.0),
                       child: Text(
-                        'Welcome, $_username!',
+                        'UID: $_uid',
                         style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.grey,
                         ),
                       ),
                     ),
