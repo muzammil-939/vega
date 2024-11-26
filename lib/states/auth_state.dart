@@ -103,11 +103,12 @@ class PhoneAuthNotifier extends StateNotifier<PhoneAuthState> {
           state = state.copyWith(firebaseToken: firebaseToken);
 
           try {
-            // Store user data with the custom UID
+            // Store user data with the custom UID and username
             await databaseReference.set({
               "uid": customUid,
               "phoneNumber": value.user!.phoneNumber,
               "createdAt": DateTime.now().toIso8601String(),
+              "username": "user", // Default username
             });
             print("User data successfully stored in Firebase.");
           } catch (dbError) {

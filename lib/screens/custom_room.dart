@@ -25,6 +25,7 @@ class _CustomRoomState extends State<CustomRoom> {
   final List<Map<String, String>> _messages = [];
   final Map<String, Widget> _userAvatars = {};
   late DatabaseReference _roomRef;
+  DatabaseReference? _micStatusRef;
   String? _username;
   Map<int, Widget> tappedButtons = {}; // Store Widgets for mic buttons
   List<Widget> micButtons = [];
@@ -59,21 +60,39 @@ class _CustomRoomState extends State<CustomRoom> {
   void _initializeChatRoom() {
     _roomRef =
         FirebaseDatabase.instance.ref('chat/rooms/${widget.roomId}/messages');
+    _micStatusRef = FirebaseDatabase.instance
+        .ref('chat/rooms/${widget.roomId}/micStatuses');
 
-    // Add the current user to the room's /users node
     final userId = _auth.currentUser?.uid;
     if (userId != null) {
-      // Save user details in the `/users/{userId}` node
       FirebaseDatabase.instance
           .ref('chat/rooms/${widget.roomId}/users/$userId')
-          .set({
-        'username': _username,
-      });
+          .set({'username': _username});
     }
 
-    // Now listen for the users in the room (for avatars)
+    _listenToMicStatus(); // Listen for mic status changes
     _initializeAvatars();
     _listenToMessages();
+    _listenToMicStatus();
+  }
+
+  void _listenToMicStatus() {
+    _micStatusRef!.onValue.listen((event) {
+      final data = event.snapshot.value as Map<dynamic, dynamic>?;
+
+      if (data != null) {
+        setState(() {
+          tappedButtons.clear(); // Clear existing mic statuses
+          data.forEach((key, value) {
+            final index = int.parse(key);
+            final username = value['username'] as String;
+
+            // Assign avatars based on Firebase data
+            tappedButtons[index] = _assignAvatar(username);
+          });
+        });
+      }
+    });
   }
 
   void _listenToMessages() {
@@ -193,6 +212,26 @@ class _CustomRoomState extends State<CustomRoom> {
   }
 
   @override
+  void dispose() {
+    final userId = _auth.currentUser?.uid;
+    if (userId != null) {
+      _micStatusRef!
+          .orderByChild('username')
+          .equalTo(_username)
+          .once()
+          .then((snapshot) {
+        if (snapshot.snapshot.value != null) {
+          final data = snapshot.snapshot.value as Map<dynamic, dynamic>;
+          data.forEach((key, _) {
+            _micStatusRef!.child(key).remove();
+          });
+        }
+      });
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -209,10 +248,10 @@ class _CustomRoomState extends State<CustomRoom> {
                   ? NetworkImage(widget.roomImage) as ImageProvider
                   : FileImage(File(widget.roomImage)),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Text(
               widget.roomName,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
             ),
           ],
         ),
@@ -226,9 +265,9 @@ class _CustomRoomState extends State<CustomRoom> {
           return shouldLeave;
         },
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/images/15.jpg'), // Path to your image
+              image: AssetImage("assets/images/15.jpg"), // Path to your image
               fit: BoxFit
                   .cover, // Ensures the image covers the entire background
             ),
@@ -242,7 +281,7 @@ class _CustomRoomState extends State<CustomRoom> {
                   children: [
                     Column(
                       children: [
-                        const Text(
+                        Text(
                           'Host',
                           style: TextStyle(
                             fontSize: 20,
@@ -254,14 +293,14 @@ class _CustomRoomState extends State<CustomRoom> {
                           height: screenWidth * 0.2,
                           decoration: BoxDecoration(
                             color: Colors.grey[700],
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(50),
                             border: Border.all(
                               width: 2,
                               style: BorderStyle.solid,
                               color: const Color(0x33ffffff),
                             ),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.person,
                             size: 40,
                             color: Colors.white,
@@ -271,7 +310,7 @@ class _CustomRoomState extends State<CustomRoom> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 // Microphone UI
                 Align(
                   alignment: Alignment.topCenter,
@@ -321,8 +360,8 @@ class _CustomRoomState extends State<CustomRoom> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (!isCurrentUser) ...[
-                              _userAvatars[sender] ?? const SizedBox.shrink(),
-                              const SizedBox(width: 8), // Add spacing
+                              _userAvatars[sender] ?? SizedBox.shrink(),
+                              SizedBox(width: 8), // Add spacing
                             ],
                             Flexible(
                               child: Column(
@@ -332,17 +371,16 @@ class _CustomRoomState extends State<CustomRoom> {
                                 children: [
                                   Text(
                                     sender,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Colors.white70,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  SizedBox(height: 4),
                                   Container(
-                                    margin:
-                                        const EdgeInsets.symmetric(vertical: 4),
-                                    padding: const EdgeInsets.all(10),
+                                    margin: EdgeInsets.symmetric(vertical: 4),
+                                    padding: EdgeInsets.all(10),
                                     decoration: BoxDecoration(
                                       color: isCurrentUser
                                           ? Colors.blue
@@ -351,16 +389,15 @@ class _CustomRoomState extends State<CustomRoom> {
                                     ),
                                     child: Text(
                                       '${message['text']}',
-                                      style:
-                                          const TextStyle(color: Colors.white),
+                                      style: TextStyle(color: Colors.white),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                             if (isCurrentUser) ...[
-                              const SizedBox(width: 8), // Add spacing
-                              _userAvatars[sender] ?? const SizedBox.shrink(),
+                              SizedBox(width: 8), // Add spacing
+                              _userAvatars[sender] ?? SizedBox.shrink(),
                             ],
                           ],
                         );
@@ -377,10 +414,10 @@ class _CustomRoomState extends State<CustomRoom> {
                       Expanded(
                         child: TextField(
                           controller: _messageController,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: 'Type a message...',
-                            hintStyle: const TextStyle(color: Colors.grey),
+                            hintStyle: TextStyle(color: Colors.grey),
                             filled: true,
                             fillColor: Colors.grey[800],
                             border: OutlineInputBorder(
@@ -390,7 +427,7 @@ class _CustomRoomState extends State<CustomRoom> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.send, color: Colors.blue),
+                        icon: Icon(Icons.send, color: Colors.blue),
                         onPressed: _sendMessage,
                       ),
                     ],
@@ -415,11 +452,13 @@ class _CustomRoomState extends State<CustomRoom> {
     // Default mic container
     return GestureDetector(
       onTap: () {
-        if (_username != null &&
-            !tappedButtons.values.contains(_userAvatars[_username!])) {
-          setState(() {
-            // Assign an avatar and store it in the tappedButtons map
-            tappedButtons[index] = _assignAvatar(_username!);
+        if (_username != null) {
+          final micRef = _micStatusRef!.child(index.toString());
+          micRef.set({'username': _username}).then((_) {
+            setState(() {
+              // Assign an avatar and store it locally
+              tappedButtons[index] = _assignAvatar(_username!);
+            });
           });
         }
       },
@@ -449,7 +488,7 @@ class _CustomRoomState extends State<CustomRoom> {
           ),
         ),
         Container(
-          margin: const EdgeInsets.symmetric(horizontal: 10),
+          margin: EdgeInsets.symmetric(horizontal: 10),
           child: Image.asset(
             'assets/images/gold-frame.png',
             width: screenWidth * 0.15,
@@ -475,7 +514,7 @@ class _CustomRoomState extends State<CustomRoom> {
           ),
         ),
         Container(
-          margin: const EdgeInsets.symmetric(horizontal: 10),
+          margin: EdgeInsets.symmetric(horizontal: 10),
           child: Image.asset(
             'assets/images/decorative-round.png',
             width: screenWidth * 0.155,
@@ -501,7 +540,7 @@ class _CustomRoomState extends State<CustomRoom> {
           ),
         ),
         Container(
-          margin: const EdgeInsets.symmetric(horizontal: 10),
+          margin: EdgeInsets.symmetric(horizontal: 10),
           child: Image.asset(
             'assets/images/gold-frame.png',
             width: screenWidth * 0.15,
