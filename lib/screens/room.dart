@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class Room extends StatefulWidget {
-  const Room({super.key});
+import '../providers/micprovider.dart';
+
+class Room extends ConsumerStatefulWidget {
+  const Room({Key? key}) : super(key: key);
 
   @override
-  State<Room> createState() => _RoomState();
+  ConsumerState<Room> createState() => _RoomState();
 }
 
-class _RoomState extends State<Room> {
+class _RoomState extends ConsumerState<Room> {
   Map<int, Widget> tappedButtons = {}; // Store Widgets
   // bool isAvatarFieldShown = false;
   final TextEditingController _controller = TextEditingController();
@@ -25,11 +28,17 @@ class _RoomState extends State<Room> {
   @override
   void initState() {
     super.initState();
+
+    // Access the provider via `ref.read`
+    final micNotifier = ref.read(micStateProvider.notifier);
+    micNotifier.initialize();
+
     _initializeChatSession();
-    _fetchOrCreateUserName();
+
     _fetchOrCreateUserName().then((_) {
       _initializeAvatars();
     });
+    _cleanupMicsOnExit();
   }
 
   /// Fetch or create a unique username for the user
@@ -171,6 +180,32 @@ class _RoomState extends State<Room> {
     }
   }
 
+  // @override
+  // void dispose() {
+  //   _cleanupMicsOnExit(); // Call mic cleanup logic
+  //   _controller.dispose(); // Dispose of the controller to avoid memory leaks
+  //   super.dispose();
+  // }
+
+  /// Clean up mic assignments when exiting the screen
+  void _cleanupMicsOnExit() {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
+    if (userId != null) {
+      for (int i = 0; i < 10; i++) {
+        FirebaseDatabase.instance
+            .ref('mic_assignments/mic_$i')
+            .once()
+            .then((snapshot) {
+          final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
+          if (data != null && data['userId'] == userId) {
+            FirebaseDatabase.instance.ref('mic_assignments/mic_$i').remove();
+          }
+        });
+      }
+    }
+  }
+
   /// Show a confirmation dialog
   Future<bool> _showExitConfirmationDialog() async {
     return await showDialog<bool>(
@@ -222,173 +257,183 @@ class _RoomState extends State<Room> {
           final shouldLeave = await _showExitConfirmationDialog();
           if (shouldLeave) {
             _clearUserMessages();
+            _cleanupMicsOnExit();
           }
           return shouldLeave;
         },
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Host UI
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Column(
-                    children: [
-                      const Text(
-                        'Host',
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Container(
-                        width: screenWidth * 0.2,
-                        height: screenWidth * 0.2,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[700],
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            width: 2,
-                            style: BorderStyle.solid,
-                            color: const Color(0x33ffffff),
+        child: Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/15.jpg'), // Path to your image
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Host UI
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Column(
+                      children: [
+                        const Text(
+                          'Host',
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.white,
                           ),
                         ),
-                        child: const Icon(
-                          Icons.person,
-                          size: 40,
-                          color: Colors.white,
+                        Container(
+                          width: screenWidth * 0.2,
+                          height: screenWidth * 0.2,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[700],
+                            borderRadius: BorderRadius.circular(50),
+                            border: Border.all(
+                              width: 2,
+                              style: BorderStyle.solid,
+                              color: const Color(0x33ffffff),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            size: 40,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
 
-              // Microphone UI
-              Align(
-                alignment: Alignment.topCenter,
-                child: Container(
-                  margin: const EdgeInsets.only(top: 5),
+                // Microphone UI
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 5),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: List.generate(
+                                5, (index) => buildMicContainer(index)),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: List.generate(
+                                5, (index) => buildMicContainer(index + 5)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Chat UI
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.only(
+                        topRight: Radius.circular(30),
+                        topLeft: Radius.circular(30),
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      reverse:
+                          true, // Makes the scroll view start from the bottom
+                      child: Column(
+                        children: [
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _messages.length,
+                            itemBuilder: (context, index) {
+                              final message = _messages[index];
+                              final isUser =
+                                  message['senderId'] == _auth.currentUser?.uid;
+                              final userName = message['sender']!;
+                              final avatarWidget = _userAvatars[userName];
+
+                              return Align(
+                                alignment: isUser
+                                    ? Alignment.centerRight
+                                    : Alignment.centerLeft,
+                                child: Row(
+                                  mainAxisAlignment: isUser
+                                      ? MainAxisAlignment.end
+                                      : MainAxisAlignment.start,
+                                  children: [
+                                    if (!isUser)
+                                      avatarWidget ??
+                                          Container(), // Display avatar if it exists
+                                    Container(
+                                      margin: const EdgeInsets.symmetric(
+                                          vertical: 4, horizontal: 8),
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: isUser
+                                            ? Colors.blueAccent
+                                            : Colors.grey[700],
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        '${userName}: ${message['text']}',
+                                        style: const TextStyle(
+                                            color: Colors.white),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Message Input
+                SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Column(
+                    child: Row(
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: List.generate(
-                              5, (index) => buildMicContainer(index)),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: List.generate(
-                              5, (index) => buildMicContainer(index + 5)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Chat UI
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.only(
-                      topRight: Radius.circular(30),
-                      topLeft: Radius.circular(30),
-                    ),
-                  ),
-                  child: SingleChildScrollView(
-                    reverse:
-                        true, // Makes the scroll view start from the bottom
-                    child: Column(
-                      children: [
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _messages.length,
-                          itemBuilder: (context, index) {
-                            final message = _messages[index];
-                            final isUser =
-                                message['senderId'] == _auth.currentUser?.uid;
-                            final userName = message['sender']!;
-                            final avatarWidget = _userAvatars[userName];
-
-                            return Align(
-                              alignment: isUser
-                                  ? Alignment.centerRight
-                                  : Alignment.centerLeft,
-                              child: Row(
-                                mainAxisAlignment: isUser
-                                    ? MainAxisAlignment.end
-                                    : MainAxisAlignment.start,
-                                children: [
-                                  if (!isUser)
-                                    avatarWidget ??
-                                        Container(), // Display avatar if it exists
-                                  Container(
-                                    margin: const EdgeInsets.symmetric(
-                                        vertical: 4, horizontal: 8),
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: isUser
-                                          ? Colors.blueAccent
-                                          : Colors.grey[700],
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      '${userName}: ${message['text']}',
-                                      style:
-                                          const TextStyle(color: Colors.white),
-                                    ),
-                                  ),
-                                ],
+                        Expanded(
+                          child: TextField(
+                            controller: _controller,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: 'Enter message...',
+                              hintStyle: const TextStyle(color: Colors.grey),
+                              filled: true,
+                              fillColor: Colors.grey[800],
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // Message Input
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: 'Enter message...',
-                            hintStyle: const TextStyle(color: Colors.grey),
-                            filled: true,
-                            fillColor: Colors.grey[800],
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.send, color: Colors.blueAccent),
-                        onPressed: _sendMessage,
-                      ),
-                    ],
+                        IconButton(
+                          icon:
+                              const Icon(Icons.send, color: Colors.blueAccent),
+                          onPressed: _sendMessage,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -397,22 +442,41 @@ class _RoomState extends State<Room> {
 
   /// Build mic container or avatar if tapped
   Widget buildMicContainer(int index) {
+    final micStates = ref.watch(micStateProvider);
+    final micState = micStates[index];
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // If the mic container has been tapped and replaced by an avatar
-    if (tappedButtons.containsKey(index)) {
-      return tappedButtons[index]!;
+    // Check if mic is occupied
+    if (micState.userId != null) {
+      // Get avatar for the user
+      final assignedAvatar = _assignAvatarForUser(micState.userName!);
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          assignedAvatar, // Use the avatar assigned to the user
+          Positioned(
+            bottom: 4,
+            child: Text(
+              micState.userName!,
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ),
+        ],
+      );
     }
 
     // Default mic container
     return GestureDetector(
-      onTap: () {
-        if (_userName != null &&
-            !tappedButtons.values.contains(_userAvatars[_userName!])) {
-          setState(() {
-            // Assign an avatar and store it in the tappedButtons map
-            tappedButtons[index] = _assignAvatarForUser(_userName!);
-          });
+      onTap: () async {
+        final userId = FirebaseAuth.instance.currentUser?.uid;
+        final userName = _userName; // Use the username initialized earlier
+
+        if (userId != null && userName != null) {
+          // Assign mic
+          await ref
+              .read(micStateProvider.notifier)
+              .assignMic(index, userId, userName);
+          setState(() {}); // Rebuild UI to reflect the avatar assignment
         }
       },
       child: Container(

@@ -635,14 +635,6 @@ Widget _buildRoomCard(BuildContext context, String name, dynamic image,
                           ),
                         );
                       }
-                    } else {
-                      // Show an error message if the room is full
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Room $name is currently full.'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
