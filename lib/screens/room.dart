@@ -180,28 +180,26 @@ class _RoomState extends ConsumerState<Room> {
     }
   }
 
-  // @override
-  // void dispose() {
-  //   _cleanupMicsOnExit(); // Call mic cleanup logic
-  //   _controller.dispose(); // Dispose of the controller to avoid memory leaks
-  //   super.dispose();
-  // }
-
   /// Clean up mic assignments when exiting the screen
-  void _cleanupMicsOnExit() {
+  void _cleanupMicsOnExit() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
 
     if (userId != null) {
+      final micNotifier = ref.read(micStateProvider.notifier);
+
       for (int i = 0; i < 10; i++) {
-        FirebaseDatabase.instance
-            .ref('mic_assignments/mic_$i')
-            .once()
-            .then((snapshot) {
-          final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
-          if (data != null && data['userId'] == userId) {
-            FirebaseDatabase.instance.ref('mic_assignments/mic_$i').remove();
-          }
-        });
+        // Iterate over all mics
+        final micRef = FirebaseDatabase.instance.ref('mic_assignments/mic_$i');
+
+        final snapshot = await micRef.get();
+        final data = snapshot.value as Map<dynamic, dynamic>?;
+
+        if (data != null && data['userId'] == userId) {
+          await micRef.remove(); // Remove the mic assignment in the database
+
+          // Reset the mic state locally
+          micNotifier.releaseMic(i); // Notify the provider
+        }
       }
     }
   }
@@ -472,11 +470,22 @@ class _RoomState extends ConsumerState<Room> {
         final userName = _userName; // Use the username initialized earlier
 
         if (userId != null && userName != null) {
-          // Assign mic
-          await ref
-              .read(micStateProvider.notifier)
-              .assignMic(index, userId, userName);
-          setState(() {}); // Rebuild UI to reflect the avatar assignment
+          final micNotifier = ref.read(micStateProvider.notifier);
+
+          // Step 1: Find and release the mic currently occupied by this user
+          for (int i = 0; i < ref.watch(micStateProvider).length; i++) {
+            final mic = ref.watch(micStateProvider)[i];
+            if (mic.userId == userId) {
+              await micNotifier.releaseMic(i); // Release the current mic
+              break; // Exit the loop once the mic is released
+            }
+          }
+
+          // Step 2: Assign the new mic
+          await micNotifier.assignMic(index, userId, userName);
+
+          // Step 3: Trigger a UI rebuild
+          setState(() {});
         }
       },
       child: Container(

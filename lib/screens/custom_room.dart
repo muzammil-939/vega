@@ -2,9 +2,12 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class CustomRoom extends StatefulWidget {
-  final String? roomId; // Room ID passed from the previous screen
+import '../providers/micprovider.dart';
+
+class CustomRoom extends ConsumerStatefulWidget {
+  final String? roomId;
   final String roomName;
   final String roomImage;
 
@@ -16,16 +19,15 @@ class CustomRoom extends StatefulWidget {
   });
 
   @override
-  State<CustomRoom> createState() => _CustomRoomState();
+  ConsumerState<CustomRoom> createState() => _CustomRoomState();
 }
 
-class _CustomRoomState extends State<CustomRoom> {
+class _CustomRoomState extends ConsumerState<CustomRoom> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController _messageController = TextEditingController();
   final List<Map<String, String>> _messages = [];
   final Map<String, Widget> _userAvatars = {};
   late DatabaseReference _roomRef;
-  DatabaseReference? _micStatusRef;
   String? _username;
   Map<int, Widget> tappedButtons = {}; // Store Widgets for mic buttons
   List<Widget> micButtons = [];
@@ -33,6 +35,10 @@ class _CustomRoomState extends State<CustomRoom> {
   @override
   void initState() {
     super.initState();
+
+    final micNotifier = ref.read(micStateProvider.notifier);
+    micNotifier.initialize();
+
     _initializeChatRoom();
     _fetchUsername().then((_) {
       _initializeAvatars();
@@ -60,39 +66,21 @@ class _CustomRoomState extends State<CustomRoom> {
   void _initializeChatRoom() {
     _roomRef =
         FirebaseDatabase.instance.ref('chat/rooms/${widget.roomId}/messages');
-    _micStatusRef = FirebaseDatabase.instance
-        .ref('chat/rooms/${widget.roomId}/micStatuses');
 
+    // Add the current user to the room's /users node
     final userId = _auth.currentUser?.uid;
     if (userId != null) {
+      // Save user details in the `/users/{userId}` node
       FirebaseDatabase.instance
           .ref('chat/rooms/${widget.roomId}/users/$userId')
-          .set({'username': _username});
+          .set({
+        'username': _username,
+      });
     }
 
-    _listenToMicStatus(); // Listen for mic status changes
+    // Now listen for the users in the room (for avatars)
     _initializeAvatars();
     _listenToMessages();
-    _listenToMicStatus();
-  }
-
-  void _listenToMicStatus() {
-    _micStatusRef!.onValue.listen((event) {
-      final data = event.snapshot.value as Map<dynamic, dynamic>?;
-
-      if (data != null) {
-        setState(() {
-          tappedButtons.clear(); // Clear existing mic statuses
-          data.forEach((key, value) {
-            final index = int.parse(key);
-            final username = value['username'] as String;
-
-            // Assign avatars based on Firebase data
-            tappedButtons[index] = _assignAvatar(username);
-          });
-        });
-      }
-    });
   }
 
   void _listenToMessages() {
@@ -132,19 +120,18 @@ class _CustomRoomState extends State<CustomRoom> {
   }
 
   Widget _assignAvatar(String username) {
-    // Only assign an avatar if it hasn't been assigned yet
     if (!_userAvatars.containsKey(username)) {
       final avatars = [
         avatarfieldsOne(),
         avatarfieldsTwo(),
-        avatarfieldsThree()
+        avatarfieldsThree(),
       ]; // Define avatars
       setState(() {
         _userAvatars[username] = avatars[
             _userAvatars.length % avatars.length]; // Cycle through avatars
       });
     }
-    return _userAvatars[_username]!;
+    return _userAvatars[username]!;
   }
 
   void _sendMessage() async {
@@ -186,6 +173,35 @@ class _CustomRoomState extends State<CustomRoom> {
     }
   }
 
+  void _assignMic(int index) {
+    if (_username == null) return;
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) return;
+
+    ref.read(micStateProvider.notifier).assignMic(index, userId, _username!);
+  }
+
+  void _releaseMic(int index) {
+    ref.read(micStateProvider.notifier).releaseMic(index);
+  }
+
+  void _clearMicAssignment() {
+    final userId = _auth.currentUser?.uid;
+
+    if (userId != null) {
+      // Iterate through all mic slots to find and remove the user's mic assignment
+      for (int i = 0; i < 10; i++) {
+        final micRef = FirebaseDatabase.instance.ref('mic_assignments/mic_$i');
+        micRef.once().then((snapshot) {
+          final micData = snapshot.snapshot.value as Map<dynamic, dynamic>?;
+          if (micData != null && micData['userId'] == userId) {
+            micRef.remove();
+          }
+        });
+      }
+    }
+  }
+
   /// Show a confirmation dialog
   Future<bool> _showExitConfirmationDialog() async {
     return await showDialog<bool>(
@@ -212,29 +228,11 @@ class _CustomRoomState extends State<CustomRoom> {
   }
 
   @override
-  void dispose() {
-    final userId = _auth.currentUser?.uid;
-    if (userId != null) {
-      _micStatusRef!
-          .orderByChild('username')
-          .equalTo(_username)
-          .once()
-          .then((snapshot) {
-        if (snapshot.snapshot.value != null) {
-          final data = snapshot.snapshot.value as Map<dynamic, dynamic>;
-          data.forEach((key, _) {
-            _micStatusRef!.child(key).remove();
-          });
-        }
-      });
-    }
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+
+    final micStates = ref.watch(micStateProvider);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -248,10 +246,10 @@ class _CustomRoomState extends State<CustomRoom> {
                   ? NetworkImage(widget.roomImage) as ImageProvider
                   : FileImage(File(widget.roomImage)),
             ),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Text(
               widget.roomName,
-              style: TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.white),
             ),
           ],
         ),
@@ -261,13 +259,14 @@ class _CustomRoomState extends State<CustomRoom> {
           final shouldLeave = await _showExitConfirmationDialog();
           if (shouldLeave) {
             _clearUserMessages();
+            _clearMicAssignment();
           }
           return shouldLeave;
         },
         child: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             image: DecorationImage(
-              image: AssetImage("assets/images/15.jpg"), // Path to your image
+              image: AssetImage('assets/images/15.jpg'), // Path to your image
               fit: BoxFit
                   .cover, // Ensures the image covers the entire background
             ),
@@ -281,7 +280,7 @@ class _CustomRoomState extends State<CustomRoom> {
                   children: [
                     Column(
                       children: [
-                        Text(
+                        const Text(
                           'Host',
                           style: TextStyle(
                             fontSize: 20,
@@ -293,14 +292,14 @@ class _CustomRoomState extends State<CustomRoom> {
                           height: screenWidth * 0.2,
                           decoration: BoxDecoration(
                             color: Colors.grey[700],
-                            borderRadius: BorderRadius.circular(50),
+                            borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               width: 2,
                               style: BorderStyle.solid,
                               color: const Color(0x33ffffff),
                             ),
                           ),
-                          child: Icon(
+                          child: const Icon(
                             Icons.person,
                             size: 40,
                             color: Colors.white,
@@ -310,7 +309,7 @@ class _CustomRoomState extends State<CustomRoom> {
                     ),
                   ],
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 // Microphone UI
                 Align(
                   alignment: Alignment.topCenter,
@@ -323,13 +322,19 @@ class _CustomRoomState extends State<CustomRoom> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: List.generate(
-                                5, (index) => buildMicContainer(index)),
+                              5,
+                              (index) =>
+                                  buildMicContainer(index, micStates[index]),
+                            ),
                           ),
                           const SizedBox(height: 10),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: List.generate(
-                                5, (index) => buildMicContainer(index + 5)),
+                              5,
+                              (index) => buildMicContainer(
+                                  index + 5, micStates[index + 5]),
+                            ),
                           ),
                         ],
                       ),
@@ -360,8 +365,8 @@ class _CustomRoomState extends State<CustomRoom> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (!isCurrentUser) ...[
-                              _userAvatars[sender] ?? SizedBox.shrink(),
-                              SizedBox(width: 8), // Add spacing
+                              _userAvatars[sender] ?? const SizedBox.shrink(),
+                              const SizedBox(width: 8), // Add spacing
                             ],
                             Flexible(
                               child: Column(
@@ -371,16 +376,17 @@ class _CustomRoomState extends State<CustomRoom> {
                                 children: [
                                   Text(
                                     sender,
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       color: Colors.white70,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  SizedBox(height: 4),
+                                  const SizedBox(height: 4),
                                   Container(
-                                    margin: EdgeInsets.symmetric(vertical: 4),
-                                    padding: EdgeInsets.all(10),
+                                    margin:
+                                        const EdgeInsets.symmetric(vertical: 4),
+                                    padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
                                       color: isCurrentUser
                                           ? Colors.blue
@@ -389,15 +395,16 @@ class _CustomRoomState extends State<CustomRoom> {
                                     ),
                                     child: Text(
                                       '${message['text']}',
-                                      style: TextStyle(color: Colors.white),
+                                      style:
+                                          const TextStyle(color: Colors.white),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                             if (isCurrentUser) ...[
-                              SizedBox(width: 8), // Add spacing
-                              _userAvatars[sender] ?? SizedBox.shrink(),
+                              const SizedBox(width: 8), // Add spacing
+                              _userAvatars[sender] ?? const SizedBox.shrink(),
                             ],
                           ],
                         );
@@ -414,10 +421,10 @@ class _CustomRoomState extends State<CustomRoom> {
                       Expanded(
                         child: TextField(
                           controller: _messageController,
-                          style: TextStyle(color: Colors.white),
+                          style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: 'Type a message...',
-                            hintStyle: TextStyle(color: Colors.grey),
+                            hintStyle: const TextStyle(color: Colors.grey),
                             filled: true,
                             fillColor: Colors.grey[800],
                             border: OutlineInputBorder(
@@ -427,7 +434,7 @@ class _CustomRoomState extends State<CustomRoom> {
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.send, color: Colors.blue),
+                        icon: const Icon(Icons.send, color: Colors.blue),
                         onPressed: _sendMessage,
                       ),
                     ],
@@ -441,36 +448,44 @@ class _CustomRoomState extends State<CustomRoom> {
     );
   }
 
-  Widget buildMicContainer(int index) {
+  Widget buildMicContainer(int index, MicState micState) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final isOccupied = micState.userId != null; // Check if the mic is occupied
 
-    // If the mic container has been tapped and replaced by an avatar
-    if (tappedButtons.containsKey(index)) {
-      return tappedButtons[index]!;
-    }
-
-    // Default mic container
     return GestureDetector(
-      onTap: () {
-        if (_username != null) {
-          final micRef = _micStatusRef!.child(index.toString());
-          micRef.set({'username': _username}).then((_) {
-            setState(() {
-              // Assign an avatar and store it locally
-              tappedButtons[index] = _assignAvatar(_username!);
-            });
-          });
+      onTap: () async {
+        final userId = FirebaseAuth.instance.currentUser?.uid;
+        final userName = _username; // Use the username initialized earlier
+
+        if (userId != null && userName != null) {
+          final micNotifier = ref.read(micStateProvider.notifier);
+
+          // Step 1: Find and release the mic currently occupied by this user
+          for (int i = 0; i < ref.watch(micStateProvider).length; i++) {
+            final mic = ref.watch(micStateProvider)[i];
+            if (mic.userId == userId) {
+              await micNotifier.releaseMic(i); // Release the current mic
+              break; // Exit the loop once the mic is released
+            }
+          }
+
+          // Step 2: Assign the new mic
+          await micNotifier.assignMic(index, userId, userName);
+
+          // Step 3: Trigger a UI rebuild
+          setState(() {});
         }
       },
-      child: Container(
-        width: screenWidth * 0.13,
-        height: screenWidth * 0.13,
-        decoration: BoxDecoration(
-          color: Colors.grey,
-          borderRadius: BorderRadius.circular(50),
-        ),
-        child: const Icon(Icons.mic, color: Colors.white),
-      ),
+      child: isOccupied
+          ? _assignAvatar(
+              micState.userName ?? 'unknown') // Display only the avatar
+          : Container(
+              width: screenWidth * 0.13,
+              height: screenWidth * 0.13,
+              decoration: BoxDecoration(
+                  color: Colors.grey, borderRadius: BorderRadius.circular(50)),
+              child: Icon(Icons.mic, color: Colors.white),
+            ), // Show mic icon if unoccupied
     );
   }
 
@@ -488,7 +503,7 @@ class _CustomRoomState extends State<CustomRoom> {
           ),
         ),
         Container(
-          margin: EdgeInsets.symmetric(horizontal: 10),
+          margin: const EdgeInsets.symmetric(horizontal: 10),
           child: Image.asset(
             'assets/images/gold-frame.png',
             width: screenWidth * 0.15,
@@ -514,7 +529,7 @@ class _CustomRoomState extends State<CustomRoom> {
           ),
         ),
         Container(
-          margin: EdgeInsets.symmetric(horizontal: 10),
+          margin: const EdgeInsets.symmetric(horizontal: 10),
           child: Image.asset(
             'assets/images/decorative-round.png',
             width: screenWidth * 0.155,
@@ -540,7 +555,7 @@ class _CustomRoomState extends State<CustomRoom> {
           ),
         ),
         Container(
-          margin: EdgeInsets.symmetric(horizontal: 10),
+          margin: const EdgeInsets.symmetric(horizontal: 10),
           child: Image.asset(
             'assets/images/gold-frame.png',
             width: screenWidth * 0.15,

@@ -52,24 +52,39 @@ class MicStateNotifier extends StateNotifier<List<MicState>> {
   }
 
   Future<void> assignMic(int index, String userId, String userName) async {
-    try {
-      await _micRef.child('mic_$index').set({
-        'userId': userId,
-        'userName': userName,
-      });
-      print('Mic $index assigned to $userName.');
-    } catch (e) {
-      print('Error assigning mic: $e');
+    final micRef = FirebaseDatabase.instance.ref('mic_assignments/mic_$index');
+    final micSnapshot = await micRef.get();
+
+    // Check if the mic is already occupied
+    if (micSnapshot.exists && micSnapshot.child('userId').value != userId) {
+      return; // Do nothing if the mic is already occupied by another user
     }
+
+    // Update the mic state in the database
+    await micRef.set({'userId': userId, 'userName': userName});
+
+    // Update the mic state locally
+    state = [
+      for (int i = 0; i < state.length; i++)
+        if (i == index)
+          MicState(userId: userId, userName: userName) // Assign the new mic
+        else
+          state[i]
+    ];
   }
 
   Future<void> releaseMic(int index) async {
-    try {
-      await _micRef.child('mic_$index').remove();
-      print('Mic $index released.');
-    } catch (e) {
-      print('Error releasing mic: $e');
-    }
+    // Reset the mic state in the database
+    await FirebaseDatabase.instance.ref('mic_assignments/mic_$index').remove();
+
+    // Update the mic state locally
+    state = [
+      for (int i = 0; i < state.length; i++)
+        if (i == index)
+          MicState(userId: null, userName: null) // Reset mic
+        else
+          state[i]
+    ];
   }
 }
 
