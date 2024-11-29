@@ -6,6 +6,7 @@ import 'package:vega/screens/profile.dart';
 import 'package:vega/screens/room.dart';
 import 'package:vega/screens/room_creation.dart';
 import 'custom_room.dart';
+import 'package:marquee/marquee.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -330,16 +331,42 @@ class _HomePageState extends State<HomePage> {
                                           MainAxisAlignment.spaceEvenly,
                                       children: [
                                         Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Text(
-                                            room['roomName'] ?? 'Unnamed Room',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 8.0),
+                                            child: SizedBox(
+                                              height: 20,
+                                              width: 75,
+                                              child: room['roomName'].length > 7
+                                                  ? Marquee(
+                                                      text: room['roomName'] ??
+                                                          'Unnamed Room',
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 16,
+                                                      ),
+                                                      scrollAxis:
+                                                          Axis.horizontal,
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .center,
+                                                      blankSpace: 20.0,
+                                                      velocity: 50.0,
+                                                      pauseAfterRound:
+                                                          Duration(seconds: 1),
+                                                    )
+                                                  : Text(
+                                                      room['roomName'] ??
+                                                          'Unnamed Room',
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 16,
+                                                      ),
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                    ),
+                                            )),
                                         Container(
                                           height: screenHeight * 0.035,
                                           width: screenWidth * 0.19,

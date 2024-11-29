@@ -282,6 +282,7 @@ class _RoomCreationState extends State<RoomCreation> {
                 child: ElevatedButton(
                   onPressed: () async {
                     await _saveRoomData();
+                    Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
