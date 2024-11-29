@@ -274,6 +274,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                     ),
+                    SizedBox(height: screenHeight * 0.02),
                     if (rooms.isEmpty)
                       Padding(
                         padding: const EdgeInsets.only(left: 30, top: 20),
