@@ -1,11 +1,12 @@
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
-import 'custom_room.dart';
 
 class RoomCreation extends StatefulWidget {
-  final Function(String, File?) onRoomCreated; // Callback function
-
+  final Function(String name, File? image) onRoomCreated;
   const RoomCreation({super.key, required this.onRoomCreated});
 
   @override
@@ -13,13 +14,73 @@ class RoomCreation extends StatefulWidget {
 }
 
 class _RoomCreationState extends State<RoomCreation> {
-  bool isPasswordVisible = false;
-  String roomType = 'Open Chat'; // Default selected room type
+  bool isRoomCreated = false;
+  String roomName = '';
+  String roomType = 'Open Chat';
   final ImagePicker _picker = ImagePicker();
   XFile? _selectedImage;
   final TextEditingController roomNameController = TextEditingController();
+  final DatabaseReference dbRef = FirebaseDatabase.instance.ref('rooms');
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
+  String? imageUrl;
 
-  // Method to show bottom sheet for image selection
+  @override
+  void initState() {
+    super.initState();
+    _loadRoomData();
+  }
+
+  Future<String> _uploadImageToFirebase(File image) async {
+    try {
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('room_images')
+          .child('$userId/${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final uploadTask = await storageRef.putFile(image);
+      final downloadUrl = await storageRef.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      throw Exception('Image upload failed: $e');
+    }
+  }
+
+  Future<void> _loadRoomData() async {
+    final snapshot = await dbRef.child(userId).get();
+    if (snapshot.exists) {
+      final roomData = snapshot.value as Map;
+      setState(() {
+        isRoomCreated = true;
+        roomName = roomData['roomName'] ?? '';
+        imageUrl = roomData['imageUrl'];
+        _selectedImage =
+            null; // Clear local image since we're displaying from the URL
+      });
+    }
+  }
+
+  Future<void> _saveRoomData() async {
+    String? uploadedImageUrl;
+    if (_selectedImage != null) {
+      final File imageFile = File(_selectedImage!.path);
+      uploadedImageUrl = await _uploadImageToFirebase(imageFile);
+    }
+
+    final Map<String, dynamic> roomData = {
+      'roomName': roomNameController.text,
+      'imageUrl': uploadedImageUrl ??
+          imageUrl, // Keep the existing image if not updated
+    };
+
+    await dbRef.child(userId).set(roomData);
+    setState(() {
+      isRoomCreated = true;
+      roomName = roomNameController.text;
+      imageUrl = uploadedImageUrl ?? imageUrl;
+      _selectedImage = null;
+    });
+  }
+
+  // Show bottom sheet for image selection
   void _showImageSourceSheet() {
     showModalBottomSheet(
       context: context,
@@ -35,7 +96,7 @@ class _RoomCreationState extends State<RoomCreation> {
               leading: const Icon(Icons.photo_library),
               title: const Text('Gallery'),
               onTap: () async {
-                Navigator.pop(context); // Close the bottom sheet
+                Navigator.pop(context);
                 final pickedImage =
                     await _picker.pickImage(source: ImageSource.gallery);
                 if (pickedImage != null) {
@@ -73,9 +134,9 @@ class _RoomCreationState extends State<RoomCreation> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          'CREATE A GAME ROOM',
-          style: TextStyle(
+        title: Text(
+          "ROOM CREATION",
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -102,19 +163,44 @@ class _RoomCreationState extends State<RoomCreation> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    TextField(
-                      controller: roomNameController,
-                      decoration: InputDecoration(
-                        hintText: 'Enter room name',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
+                    if (!isRoomCreated)
+                      TextField(
+                        controller: roomNameController,
+                        decoration: InputDecoration(
+                          hintText: 'Enter room name',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30.0),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20.0,
+                            vertical: 20.0,
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20.0,
-                          vertical: 20.0,
-                        ),
+                      )
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              roomName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.teal),
+                            onPressed: () {
+                              setState(() {
+                                isRoomCreated =
+                                    false; // Allow editing room name
+                                roomNameController.text = roomName;
+                              });
+                            },
+                          ),
+                        ],
                       ),
-                    ),
                     const SizedBox(height: 16),
                     const Text(
                       'ICON/BANNER',
@@ -125,60 +211,51 @@ class _RoomCreationState extends State<RoomCreation> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: _showImageSourceSheet,
-                      child: const Text(
-                        'Upload from mobile',
-                        style: TextStyle(
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
                     if (_selectedImage != null)
-                      Center(
-                        child: Image.file(
-                          File(_selectedImage!.path),
-                          height: 150,
-                          width: 150,
-                          fit: BoxFit.cover,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Image.file(
+                              File(_selectedImage!.path),
+                              height: 150,
+                              width: 150,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.teal),
+                            onPressed: _showImageSourceSheet,
+                          ),
+                        ],
+                      )
+                    else if (imageUrl != null)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Image.network(
+                              imageUrl!,
+                              height: 150,
+                              width: 150,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.teal),
+                            onPressed: _showImageSourceSheet,
+                          ),
+                        ],
+                      )
+                    else
+                      GestureDetector(
+                        onTap: _showImageSourceSheet,
+                        child: const Text(
+                          'Upload from mobile',
+                          style: TextStyle(
+                            decoration: TextDecoration.underline,
+                          ),
                         ),
                       ),
                     const SizedBox(height: 16),
-                    const Text(
-                      'PASSWORD',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.teal,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      obscureText: !isPasswordVisible,
-                      decoration: InputDecoration(
-                        hintText: 'Enter password',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20.0,
-                          vertical: 20.0,
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            isPasswordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              isPasswordVisible = !isPasswordVisible;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -203,25 +280,9 @@ class _RoomCreationState extends State<RoomCreation> {
                   borderRadius: BorderRadius.circular(107),
                 ),
                 child: ElevatedButton(
-                  onPressed: () {
-                    widget.onRoomCreated(
-                        roomNameController.text,
-                        _selectedImage != null
-                            ? File(_selectedImage!.path)
-                            : null);
-                    Navigator.pop(context); // Go back to HomePage
+                  onPressed: () async {
+                    await _saveRoomData();
                   },
-                  // onPressed: () {
-                  //   Navigator.push(
-                  //     context,
-                  //     MaterialPageRoute(
-                  //       builder: (context) => CustomRoom(
-                  //         roomName: roomNameController.text,
-                  //         roomImage: _selectedImage,
-                  //       ),
-                  //     ),
-                  //   );
-                  // },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     elevation: 0,
@@ -230,10 +291,10 @@ class _RoomCreationState extends State<RoomCreation> {
                     ),
                     padding: EdgeInsets.zero,
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      'CREATE A ROOM',
-                      style: TextStyle(
+                      'SAVE',
+                      style: const TextStyle(
                         fontSize: 18,
                         color: Color(0xff025253),
                       ),

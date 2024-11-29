@@ -1,13 +1,10 @@
 import 'dart:io';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:vega/screens/profile.dart';
 import 'package:vega/screens/room.dart';
 import 'package:vega/screens/room_creation.dart';
-
 import 'custom_room.dart';
 
 class HomePage extends StatefulWidget {
@@ -20,39 +17,43 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   List<Map<String, dynamic>> rooms = [];
-  final _databaseRef = FirebaseDatabase.instance.ref();
+  final DatabaseReference _databaseRef = FirebaseDatabase.instance.ref();
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
 
   @override
   void initState() {
     super.initState();
-    _loadRooms(); // Load rooms from Firebase
-  }
-
-  Future<void> _loadRooms() async {
-    try {
-      final roomsSnapshot = await _databaseRef.child('rooms').get();
-      if (roomsSnapshot.exists) {
-        final roomsData = Map<String, dynamic>.from(roomsSnapshot.value as Map);
-        setState(() {
-          rooms = roomsData.entries.map((entry) {
-            return {
-              'name': entry.value['name'],
-              'image': entry.value['image'],
-            };
-          }).toList();
-        });
-      }
-    } catch (e) {
-      print('Error loading rooms: $e');
-    }
-  }
-
-  Future<void> _addRoomToDatabase(String name, dynamic image) async {
-    final roomRef = _databaseRef.child('rooms').push();
-    await roomRef.set({
-      'name': name,
-      'image': image is File ? image.path : image,
+    _fetchRooms(); // Fetch initial rooms
+    _databaseRef.child('rooms').onValue.listen((event) {
+      final data = event.snapshot.value as Map<dynamic, dynamic>? ?? {};
+      setState(() {
+        rooms = data.entries.map((entry) {
+          final value = entry.value as Map<dynamic, dynamic>;
+          return {
+            'roomName': value['roomName'],
+            'imageUrl': value['imageUrl'] ?? '',
+            'roomId': entry.key,
+          };
+        }).toList();
+      });
     });
+  }
+
+  void _fetchRooms() async {
+    final snapshot = await _databaseRef.child('rooms').get();
+    if (snapshot.exists) {
+      final data = snapshot.value as Map<dynamic, dynamic>;
+      setState(() {
+        rooms = data.entries.map((entry) {
+          final value = entry.value as Map<dynamic, dynamic>;
+          return {
+            'roomName': value['roomName'],
+            'imageUrl': value['imageUrl'] ?? '',
+            'roomId': entry.key,
+          };
+        }).toList();
+      });
+    }
   }
 
   void _onItemTapped(int index) {
@@ -69,11 +70,8 @@ class _HomePageState extends State<HomePage> {
           context,
           MaterialPageRoute(
             builder: (context) => RoomCreation(
-              onRoomCreated: (String name, File? image) async {
-                await _addRoomToDatabase(name, image);
-                setState(() {
-                  rooms.add({'name': name, 'image': image});
-                });
+              onRoomCreated: (String name, File? image) {
+                _fetchRooms(); // Refresh the room list after room creation
               },
             ),
           ),
@@ -87,19 +85,12 @@ class _HomePageState extends State<HomePage> {
         );
         break;
       case 3:
-        //Settings
-        // Navigator.push(
-        //   context,
-        //   MaterialPageRoute(builder: (context) => SettingsPage()),
-        // );
         break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Retrieve the current user from FirebaseAuth
-    User? user = FirebaseAuth.instance.currentUser;
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
@@ -130,8 +121,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-
-          // Horizontal scrolling list of popular games
           Positioned(
             top: 100,
             left: 0,
@@ -151,10 +140,10 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
 
-          // Bottom section with horizontal ListView of rooms
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
+              width: screenWidth,
               height: screenHeight * 0.5,
               decoration: const BoxDecoration(
                 borderRadius: BorderRadius.only(
@@ -189,7 +178,7 @@ class _HomePageState extends State<HomePage> {
                       width: screenWidth * 0.45,
                       height: screenHeight * 0.24,
                       decoration: BoxDecoration(
-                        color: const Color(0x33d5c994),
+                        color: const Color(0xffF4F0E2),
                         borderRadius: BorderRadius.circular(25),
                       ),
                       child: Column(
@@ -283,36 +272,131 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 25, vertical: 20),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 10),
-                          // Horizontal ListView of rooms with height restricted
-                          SizedBox(
-                            height: screenHeight * 0.28,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: rooms.length,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(width: 20),
-                              itemBuilder: (context, index) {
-                                final room = rooms[index];
-                                return _buildRoomCard(
-                                  context,
-                                  room['name'],
-                                  room['image'],
-                                  screenWidth,
-                                  screenHeight,
-                                  index, // Pass index here
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    if (rooms.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 30, top: 20),
+                        child: Text(
+                          "No custom rooms available.",
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        height: screenHeight * 0.25,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: rooms.length,
+                          itemBuilder: (context, index) {
+                            final room = rooms[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(left: 20),
+                              child: Container(
+                                width: screenWidth * 0.525,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xffF4F0E2),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 10,
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    SizedBox(height: screenHeight * 0.02),
+                                    room['imageUrl'] != null
+                                        ? ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(15),
+                                            child: Image.network(
+                                              room['imageUrl'],
+                                              height: screenHeight * 0.15,
+                                              width: screenWidth * 0.4,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          )
+                                        : Container(
+                                            height: screenHeight * 0.15,
+                                            width: screenWidth * 0.5,
+                                            color: Colors.grey[300],
+                                            child: const Icon(Icons.image,
+                                                size: 50),
+                                          ),
+                                    SizedBox(height: screenHeight * 0.02),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: Text(
+                                            room['roomName'] ?? 'Unnamed Room',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                        Container(
+                                          height: screenHeight * 0.035,
+                                          width: screenWidth * 0.19,
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [
+                                                Color.fromRGBO(
+                                                    37, 152, 158, 100),
+                                                Color.fromRGBO(
+                                                    201, 233, 236, 50),
+                                                Color.fromRGBO(
+                                                    122, 194, 199, 100),
+                                                Color.fromRGBO(
+                                                    37, 152, 158, 100),
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(107),
+                                          ),
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      CustomRoom(
+                                                    roomId: room['entry.key'],
+                                                    roomName: room['roomName'],
+                                                    roomImage: room['imageUrl'],
+                                                    // Replace with actual roomImage
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(107),
+                                              ),
+                                              padding: EdgeInsets.zero,
+                                            ),
+                                            child: Text("Join"),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      )
                   ],
                 ),
               ),
@@ -490,165 +574,6 @@ Widget _mostPopularGames(context) {
                 ),
               ),
             ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _buildRoomCard(BuildContext context, String name, dynamic image,
-    double screenWidth, double screenHeight, int index) {
-  bool isRoomFull =
-      false; // Replace this with your  logic to determine if the room is full
-
-  return Container(
-    width: screenWidth * 0.45,
-    height: screenHeight * 0.24,
-    decoration: BoxDecoration(
-      color: const Color(0x33d5c994),
-      borderRadius: BorderRadius.circular(25),
-    ),
-    child: Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 10, bottom: 10),
-          child: image is String
-              ? Image.asset(
-                  image,
-                  width: screenWidth * 0.42,
-                  height: screenWidth * 0.3,
-                )
-              : Container(
-                  height: screenHeight * 0.123,
-                  width: screenWidth * 0.35,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Image.file(
-                    image as File,
-                    width: screenWidth * 0.42,
-                    height: screenWidth * 0.3,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-        ),
-        SizedBox(
-          width: screenWidth * 0.33,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(name),
-              const Text(
-                "#1234",
-                style: TextStyle(
-                  fontSize: 10,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 5),
-        SizedBox(
-          width: screenWidth * 0.35,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: const [
-                  Icon(Icons.person),
-                  Text("1/4"), // Update participant count dynamically
-                ],
-              ),
-              Container(
-                height: screenHeight * 0.035,
-                width: screenWidth * 0.19,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color.fromRGBO(37, 152, 158, 100),
-                      Color.fromRGBO(201, 233, 236, 50),
-                      Color.fromRGBO(122, 194, 199, 100),
-                      Color.fromRGBO(37, 152, 158, 100),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(107),
-                ),
-                child: ElevatedButton(
-                  onPressed: () async {
-                    if (!isRoomFull) {
-                      final database = FirebaseDatabase.instance;
-
-                      try {
-                        // Check if a room with the same name already exists
-                        final roomsRef = database.ref('rooms');
-                        final snapshot = await roomsRef
-                            .orderByChild('name')
-                            .equalTo(name)
-                            .get();
-
-                        String? roomId;
-
-                        if (snapshot.exists) {
-                          // Use the existing room ID
-                          roomId = snapshot.children.first.key;
-                          print('Room exists. Using existing roomId: $roomId');
-                        } else {
-                          // Generate a new room ID and create a new room entry
-                          roomId = roomsRef.push().key;
-                          if (roomId != null) {
-                            print('Creating a new room with roomId: $roomId');
-                            await roomsRef.child(roomId).set({
-                              'name': name,
-                              'image': image is File ? image.path : image,
-                              'participants': {}, // Start with no participants
-                            });
-                          } else {
-                            print('Failed to generate a roomId.');
-                            return;
-                          }
-                        }
-
-                        if (roomId != null) {
-                          // Navigate to the custom room
-                          print(
-                              'Navigating to CustomRoom with roomId: $roomId');
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CustomRoom(
-                                roomId: roomId,
-                                roomName: name,
-                                roomImage: image is File ? image.path : image,
-                              ),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        print('Error in room creation/joining: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Failed to join/create room: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(107),
-                    ),
-                    padding: EdgeInsets.zero,
-                  ),
-                  child: Text(!isRoomFull ? "Join" : "Full"),
-                ),
-              ),
-            ],
           ),
         ),
       ],
