@@ -95,56 +95,57 @@ class _HomePageState extends State<HomePage> {
     final screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
+      body: Column(
         children: [
-          // Top gradient container with an image
-          Container(
-            height: screenHeight * 0.46,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xffffffff),
-                  Color(0xffBDE2E4),
-                ],
-                stops: [0.8, 1.0],
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-              ),
-            ),
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 50.0),
-                child: Image.asset(
-                  'assets/images/most_popular_title.png',
+          Stack(
+            children: [
+              // Top gradient container with an image
+              Container(
+                height: screenHeight * 0.46,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xffffffff),
+                      Color(0xffBDE2E4),
+                    ],
+                    stops: [0.8, 1.0],
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                  ),
                 ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 100,
-            left: 0,
-            right: 0,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              child: Row(
-                children: List.generate(
-                  4,
-                  (index) => Padding(
-                    padding: const EdgeInsets.only(right: 25),
-                    child: _mostPopularGames(context),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 50.0),
+                    child: Image.asset(
+                      'assets/images/most_popular_title.png',
+                    ),
                   ),
                 ),
               ),
-            ),
+              Positioned(
+                top: 100,
+                left: 0,
+                right: 0,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: Row(
+                    children: List.generate(
+                      4,
+                      (index) => Padding(
+                        padding: const EdgeInsets.only(right: 25),
+                        child: _mostPopularGames(context),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-
-          Align(
-            alignment: Alignment.bottomCenter,
+          Expanded(
             child: Container(
               width: screenWidth,
-              height: screenHeight * 0.5,
               decoration: const BoxDecoration(
                 borderRadius: BorderRadius.only(
                   topRight: Radius.circular(30),
@@ -282,7 +283,7 @@ class _HomePageState extends State<HomePage> {
                       )
                     else
                       SizedBox(
-                        height: screenHeight * 0.25,
+                        height: screenHeight * 0.3,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           itemCount: rooms.length,
@@ -291,7 +292,7 @@ class _HomePageState extends State<HomePage> {
                             return Padding(
                               padding: const EdgeInsets.only(left: 20),
                               child: Container(
-                                width: screenWidth * 0.525,
+                                width: screenWidth * 0.45,
                                 decoration: BoxDecoration(
                                   color: const Color(0xffF4F0E2),
                                   borderRadius: BorderRadius.circular(16),
@@ -311,19 +312,19 @@ class _HomePageState extends State<HomePage> {
                                                 BorderRadius.circular(15),
                                             child: Image.network(
                                               room['imageUrl'],
-                                              height: screenHeight * 0.15,
-                                              width: screenWidth * 0.4,
+                                              height: screenHeight * 0.16,
+                                              width: screenWidth * 0.38,
                                               fit: BoxFit.cover,
                                             ),
                                           )
                                         : Container(
-                                            height: screenHeight * 0.15,
-                                            width: screenWidth * 0.5,
+                                            height: screenHeight * 0.16,
+                                            width: screenWidth * 0.38,
                                             color: Colors.grey[300],
                                             child: const Icon(Icons.image,
                                                 size: 50),
                                           ),
-                                    SizedBox(height: screenHeight * 0.02),
+                                    SizedBox(height: screenHeight * 0.025),
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceEvenly,
@@ -396,7 +397,10 @@ class _HomePageState extends State<HomePage> {
                             );
                           },
                         ),
-                      )
+                      ),
+                    SizedBox(
+                      height: screenHeight * 0.075,
+                    ),
                   ],
                 ),
               ),
