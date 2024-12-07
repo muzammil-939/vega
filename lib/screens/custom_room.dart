@@ -507,14 +507,17 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
           setState(() {});
         }
       },
-      child: Container(
-        width: screenWidth * 0.13,
-        height: screenWidth * 0.13,
-        decoration: BoxDecoration(
-          color: Colors.grey,
-          borderRadius: BorderRadius.circular(50),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Container(
+          width: screenWidth * 0.13,
+          height: screenWidth * 0.13,
+          decoration: BoxDecoration(
+            color: Colors.grey,
+            borderRadius: BorderRadius.circular(50),
+          ),
+          child: const Icon(Icons.mic, color: Colors.white),
         ),
-        child: const Icon(Icons.mic, color: Colors.white),
       ),
     );
   }
