@@ -60,18 +60,25 @@ class _RoomCreationState extends State<RoomCreation> {
 
   Future<void> _saveRoomData() async {
     String? uploadedImageUrl;
+
+    // Upload the selected image if present
     if (_selectedImage != null) {
       final File imageFile = File(_selectedImage!.path);
       uploadedImageUrl = await _uploadImageToFirebase(imageFile);
     }
 
+    // Prepare room data with userId included
     final Map<String, dynamic> roomData = {
       'roomName': roomNameController.text,
       'imageUrl': uploadedImageUrl ??
           imageUrl, // Keep the existing image if not updated
+      'userId': userId, // Save the current user's UID
     };
 
+    // Save the data to the database
     await dbRef.child(userId).set(roomData);
+
+    // Update UI state
     setState(() {
       isRoomCreated = true;
       roomName = roomNameController.text;

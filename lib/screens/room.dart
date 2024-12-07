@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../providers/micprovider.dart';
 
 class Room extends ConsumerStatefulWidget {
@@ -269,6 +268,7 @@ class _RoomState extends ConsumerState<Room> {
           child: SafeArea(
             child: Column(
               children: [
+                const SizedBox(height: 15),
                 // Host UI
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -304,29 +304,22 @@ class _RoomState extends ConsumerState<Room> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 15),
 
                 // Microphone UI
                 Align(
                   alignment: Alignment.topCenter,
                   child: Container(
-                    margin: const EdgeInsets.only(top: 5),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: List.generate(
-                                5, (index) => buildMicContainer(index)),
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: List.generate(
-                                5, (index) => buildMicContainer(index + 5)),
-                          ),
-                        ],
+                    margin: const EdgeInsets.symmetric(horizontal: 40),
+                    child: GridView.count(
+                      shrinkWrap:
+                          true, // Ensures GridView takes only as much space as needed
+                      crossAxisCount: 4, // Number of columns in the grid
+                      mainAxisSpacing: 10, // Spacing between rows
+                      crossAxisSpacing: 10, // Spacing between columns
+                      children: List.generate(
+                        8, // Total number of mic containers
+                        (index) => buildMicContainer(index),
                       ),
                     ),
                   ),
@@ -488,14 +481,17 @@ class _RoomState extends ConsumerState<Room> {
           setState(() {});
         }
       },
-      child: Container(
-        width: screenWidth * 0.13,
-        height: screenWidth * 0.13,
-        decoration: BoxDecoration(
-          color: Colors.grey,
-          borderRadius: BorderRadius.circular(50),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Container(
+          width: screenWidth * 0.13,
+          height: screenWidth * 0.13,
+          decoration: BoxDecoration(
+            color: Colors.grey,
+            borderRadius: BorderRadius.circular(50),
+          ),
+          child: const Icon(Icons.mic, color: Colors.white),
         ),
-        child: const Icon(Icons.mic, color: Colors.white),
       ),
     );
   }

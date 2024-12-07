@@ -185,19 +185,41 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
     ref.read(micStateProvider.notifier).releaseMic(index);
   }
 
-  void _clearMicAssignment() {
-    final userId = _auth.currentUser?.uid;
+  // void _clearMicAssignment() {
+  //   final userId = _auth.currentUser?.uid;
+  //
+  //   if (userId != null) {
+  //     // Iterate through all mic slots to find and remove the user's mic assignment
+  //     for (int i = 0; i < 10; i++) {
+  //       final micRef = FirebaseDatabase.instance.ref('mic_assignments/mic_$i');
+  //       micRef.once().then((snapshot) {
+  //         final micData = snapshot.snapshot.value as Map<dynamic, dynamic>?;
+  //         if (micData != null && micData['userId'] == userId) {
+  //           micRef.remove();
+  //         }
+  //       });
+  //     }
+  //   }
+  // }
+  void _clearMicAssignment() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
 
     if (userId != null) {
-      // Iterate through all mic slots to find and remove the user's mic assignment
+      final micNotifier = ref.read(micStateProvider.notifier);
+
       for (int i = 0; i < 10; i++) {
+        // Iterate over all mics
         final micRef = FirebaseDatabase.instance.ref('mic_assignments/mic_$i');
-        micRef.once().then((snapshot) {
-          final micData = snapshot.snapshot.value as Map<dynamic, dynamic>?;
-          if (micData != null && micData['userId'] == userId) {
-            micRef.remove();
-          }
-        });
+
+        final snapshot = await micRef.get();
+        final data = snapshot.value as Map<dynamic, dynamic>?;
+
+        if (data != null && data['userId'] == userId) {
+          await micRef.remove(); // Remove the mic assignment in the database
+
+          // Reset the mic state locally
+          micNotifier.releaseMic(i); // Notify the provider
+        }
       }
     }
   }
@@ -274,6 +296,7 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
           child: SafeArea(
             child: Column(
               children: [
+                const SizedBox(height: 15),
                 // Host UI
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -292,7 +315,7 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
                           height: screenWidth * 0.2,
                           decoration: BoxDecoration(
                             color: Colors.grey[700],
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(50),
                             border: Border.all(
                               width: 2,
                               style: BorderStyle.solid,
@@ -309,34 +332,21 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 15),
                 // Microphone UI
                 Align(
                   alignment: Alignment.topCenter,
                   child: Container(
-                    margin: const EdgeInsets.only(top: 5),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: List.generate(
-                              5,
-                              (index) =>
-                                  buildMicContainer(index, micStates[index]),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: List.generate(
-                              5,
-                              (index) => buildMicContainer(
-                                  index + 5, micStates[index + 5]),
-                            ),
-                          ),
-                        ],
+                    margin: const EdgeInsets.symmetric(horizontal: 40),
+                    child: GridView.count(
+                      shrinkWrap:
+                          true, // Ensures GridView takes only as much space as needed
+                      crossAxisCount: 4, // Number of columns in the grid
+                      mainAxisSpacing: 10, // Spacing between rows
+                      crossAxisSpacing: 10, // Spacing between columns
+                      children: List.generate(
+                        8, // Total number of mic containers
+                        (index) => buildMicContainer(index),
                       ),
                     ),
                   ),
@@ -448,10 +458,31 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
     );
   }
 
-  Widget buildMicContainer(int index, MicState micState) {
+  Widget buildMicContainer(int index) {
+    final micStates = ref.watch(micStateProvider);
+    final micState = micStates[index];
     final screenWidth = MediaQuery.of(context).size.width;
-    final isOccupied = micState.userId != null; // Check if the mic is occupied
 
+    // Check if mic is occupied
+    if (micState.userId != null) {
+      // Get avatar for the user
+      final assignedAvatar = _assignAvatar(micState.userName!);
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          assignedAvatar, // Use the avatar assigned to the user
+          Positioned(
+            bottom: 4,
+            child: Text(
+              micState.userName!,
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Default mic container
     return GestureDetector(
       onTap: () async {
         final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -476,16 +507,15 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
           setState(() {});
         }
       },
-      child: isOccupied
-          ? _assignAvatar(
-              micState.userName ?? 'unknown') // Display only the avatar
-          : Container(
-              width: screenWidth * 0.13,
-              height: screenWidth * 0.13,
-              decoration: BoxDecoration(
-                  color: Colors.grey, borderRadius: BorderRadius.circular(50)),
-              child: Icon(Icons.mic, color: Colors.white),
-            ), // Show mic icon if unoccupied
+      child: Container(
+        width: screenWidth * 0.13,
+        height: screenWidth * 0.13,
+        decoration: BoxDecoration(
+          color: Colors.grey,
+          borderRadius: BorderRadius.circular(50),
+        ),
+        child: const Icon(Icons.mic, color: Colors.white),
+      ),
     );
   }
 

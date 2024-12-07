@@ -108,7 +108,7 @@ class PhoneAuthNotifier extends StateNotifier<PhoneAuthState> {
               "uid": customUid,
               "phoneNumber": value.user!.phoneNumber,
               "createdAt": DateTime.now().toIso8601String(),
-              "username": "user", // Default username
+              "username": customUid, // Default username
             });
             print("User data successfully stored in Firebase.");
           } catch (dbError) {

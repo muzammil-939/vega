@@ -27,7 +27,7 @@ class MicState {
 }
 
 class MicStateNotifier extends StateNotifier<List<MicState>> {
-  MicStateNotifier() : super(List.generate(10, (_) => MicState.empty()));
+  MicStateNotifier() : super(List.generate(8, (_) => MicState.empty()));
 
   final DatabaseReference _micRef =
       FirebaseDatabase.instance.ref('mic_assignments/');
@@ -38,7 +38,7 @@ class MicStateNotifier extends StateNotifier<List<MicState>> {
 
       if (data != null) {
         final updatedState = List<MicState>.generate(
-          10,
+          8,
           (index) {
             final micData = data['mic_$index'];
             return micData != null
