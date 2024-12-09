@@ -64,8 +64,7 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
   }
 
   void _initializeChatRoom() {
-    _roomRef =
-        FirebaseDatabase.instance.ref('chat/rooms/${widget.roomId}/messages');
+    _roomRef = FirebaseDatabase.instance.ref('chat/rooms/messages');
 
     // Add the current user to the room's /users node
     final userId = _auth.currentUser?.uid;
@@ -148,28 +147,26 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
     _messageController.clear();
   }
 
-  void _clearUserMessages() {
-    final senderId = _auth.currentUser?.uid;
+  void _deleteUserMessages() async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null || _username == null) return;
 
-    if (senderId != null && _roomRef != null) {
-      // Clear messages in Firebase Realtime Database
-      _roomRef!.once().then((snapshot) {
-        final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
+    final messagesRef = FirebaseDatabase.instance.ref('chat/rooms/messages');
 
-        if (data != null) {
-          for (var entry in data.entries) {
-            final message = entry.value as Map<dynamic, dynamic>;
-            if (message['senderId'] == senderId) {
-              _roomRef!.child(entry.key).remove();
-            }
-          }
-        }
-      });
+    // Fetch all messages
+    final snapshot = await messagesRef.get();
+    if (!snapshot.exists) return;
 
-      // Clear messages locally
-      setState(() {
-        _messages.removeWhere((message) => message['senderId'] == senderId);
-      });
+    final messages = snapshot.value as Map<dynamic, dynamic>;
+
+    for (var entry in messages.entries) {
+      final messageData = entry.value as Map<dynamic, dynamic>;
+
+      // Check if the message belongs to the current user
+      if (messageData['sender'] == _username) {
+        // Remove the message
+        await messagesRef.child(entry.key).remove();
+      }
     }
   }
 
@@ -185,22 +182,6 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
     ref.read(micStateProvider.notifier).releaseMic(index);
   }
 
-  // void _clearMicAssignment() {
-  //   final userId = _auth.currentUser?.uid;
-  //
-  //   if (userId != null) {
-  //     // Iterate through all mic slots to find and remove the user's mic assignment
-  //     for (int i = 0; i < 10; i++) {
-  //       final micRef = FirebaseDatabase.instance.ref('mic_assignments/mic_$i');
-  //       micRef.once().then((snapshot) {
-  //         final micData = snapshot.snapshot.value as Map<dynamic, dynamic>?;
-  //         if (micData != null && micData['userId'] == userId) {
-  //           micRef.remove();
-  //         }
-  //       });
-  //     }
-  //   }
-  // }
   void _clearMicAssignment() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
 
@@ -280,7 +261,7 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
         onWillPop: () async {
           final shouldLeave = await _showExitConfirmationDialog();
           if (shouldLeave) {
-            _clearUserMessages();
+            _deleteUserMessages();
             _clearMicAssignment();
           }
           return shouldLeave;
@@ -342,8 +323,7 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
                       shrinkWrap:
                           true, // Ensures GridView takes only as much space as needed
                       crossAxisCount: 4, // Number of columns in the grid
-                      mainAxisSpacing: 10, // Spacing between rows
-                      crossAxisSpacing: 10, // Spacing between columns
+
                       children: List.generate(
                         8, // Total number of mic containers
                         (index) => buildMicContainer(index),
@@ -508,7 +488,7 @@ class _CustomRoomState extends ConsumerState<CustomRoom> {
         }
       },
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(12),
         child: Container(
           width: screenWidth * 0.13,
           height: screenWidth * 0.13,

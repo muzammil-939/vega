@@ -315,8 +315,7 @@ class _RoomState extends ConsumerState<Room> {
                       shrinkWrap:
                           true, // Ensures GridView takes only as much space as needed
                       crossAxisCount: 4, // Number of columns in the grid
-                      mainAxisSpacing: 10, // Spacing between rows
-                      crossAxisSpacing: 10, // Spacing between columns
+
                       children: List.generate(
                         8, // Total number of mic containers
                         (index) => buildMicContainer(index),
@@ -482,7 +481,7 @@ class _RoomState extends ConsumerState<Room> {
         }
       },
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(12),
         child: Container(
           width: screenWidth * 0.13,
           height: screenWidth * 0.13,
